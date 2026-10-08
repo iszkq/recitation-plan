@@ -239,74 +239,139 @@ class TodayPage extends StatelessWidget {
   }
 }
 
-class LibraryPage extends StatelessWidget {
+class LibraryPage extends StatefulWidget {
   const LibraryPage({super.key, required this.model});
   final AppModel model;
   @override
-  Widget build(BuildContext context) => CupertinoPageScaffold(
-    navigationBar: CupertinoNavigationBar(
-      middle: const Text('文库'),
-      trailing: CupertinoButton(
-        padding: EdgeInsets.zero,
-        onPressed: () => Navigator.of(
-          context,
-          rootNavigator: true,
-        ).push(CupertinoPageRoute(builder: (_) => ImportPage(model: model))),
-        child: const Icon(CupertinoIcons.add),
+  State<LibraryPage> createState() => _LibraryPageState();
+}
+
+class _LibraryPageState extends State<LibraryPage> {
+  final search = TextEditingController();
+  int filter = 0;
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
+
+  void importArticle() => Navigator.of(
+    context,
+    rootNavigator: true,
+  ).push(CupertinoPageRoute(builder: (_) => ImportPage(model: widget.model)));
+
+  @override
+  Widget build(BuildContext context) {
+    final model = widget.model;
+    final query = search.text.trim().toLowerCase();
+    final visible = model.articles.where((article) {
+      final progress = model.articleProgress(article);
+      final matches =
+          article.title.toLowerCase().contains(query) ||
+          (article.author ?? '').toLowerCase().contains(query);
+      return matches &&
+          (filter == 0 ||
+              (filter == 1 &&
+                  progress.active &&
+                  progress.mastered < progress.total) ||
+              (filter == 2 &&
+                  progress.total > 0 &&
+                  progress.mastered == progress.total));
+    }).toList();
+    return CupertinoPageScaffold(
+      navigationBar: CupertinoNavigationBar(
+        middle: const Text('文库'),
+        trailing: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: importArticle,
+          child: Semantics(
+            label: '导入文章',
+            child: const Icon(CupertinoIcons.add),
+          ),
+        ),
       ),
-    ),
-    child: SafeArea(
-      child: model.articles.isEmpty
-          ? EmptyContent(
-              '文库还是空的',
-              '导入第一篇文章后，可以确认分段并安排计划。',
-              action: PrimaryAction(
-                '导入文章',
-                onPressed: () =>
-                    Navigator.of(context, rootNavigator: true).push(
-                      CupertinoPageRoute(
-                        builder: (_) => ImportPage(model: model),
-                      ),
-                    ),
-              ),
-            )
-          : ListView(
-              padding: const EdgeInsets.only(top: 12, bottom: 24),
-              children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    Design.inset,
-                    8,
-                    Design.inset,
-                    10,
-                  ),
-                  child: Text(
-                    '你的文章',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
+      child: SafeArea(
+        child: model.articles.isEmpty
+            ? EmptyContent(
+                '文库还是空的',
+                '导入第一篇文章后，可以确认分段并安排计划。',
+                action: PrimaryAction('导入文章', onPressed: importArticle),
+              )
+            : ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  Design.inset,
+                  20,
+                  Design.inset,
+                  24,
                 ),
-                for (final article in model.articles)
-                  DetailRow(
-                    title: article.title,
-                    subtitle:
-                        '原文版本 · ${dateLabel(article.updatedAt.toLocal())}',
-                    icon: CupertinoIcons.book,
-                    onTap: () =>
-                        Navigator.of(context, rootNavigator: true).push(
-                          CupertinoPageRoute(
-                            builder: (_) =>
-                                ArticlePage(model: model, article: article),
-                          ),
-                        ),
+                children: [
+                  const Text('你的文库', style: Design.display),
+                  const SizedBox(height: 6),
+                  const Text('把想记住的文字，放在这里', style: Design.caption),
+                  const SizedBox(height: 20),
+                  CupertinoSearchTextField(
+                    controller: search,
+                    placeholder: '搜索文章或作者',
+                    onChanged: (_) => setState(() {}),
                   ),
-              ],
-            ),
-    ),
-  );
+                  const SizedBox(height: 16),
+                  CupertinoSlidingSegmentedControl<int>(
+                    groupValue: filter,
+                    children: const {
+                      0: Text('全部'),
+                      1: Text('背诵中'),
+                      2: Text('已完成'),
+                    },
+                    onValueChanged: (value) {
+                      if (value != null) setState(() => filter = value);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  if (visible.isEmpty)
+                    EmptyContent(
+                      query.isNotEmpty
+                          ? '没有找到相关文章'
+                          : filter == 2
+                          ? '还没有完成的文章'
+                          : '还没有正在背诵的文章',
+                      query.isNotEmpty
+                          ? '试试其他标题或作者关键词。'
+                          : filter == 2
+                          ? '当前原文的所有小节通过后，会显示在这里。'
+                          : '先为文章制定一个学习计划。',
+                    ),
+                  for (final article in visible) ...[
+                    DetailRow(
+                      inset: false,
+                      title: article.title,
+                      subtitle:
+                          '${article.author ?? '未填写作者'} · ${model.articleProgress(article).total}节 · ${model.articleProgress(article).mastered}节已掌握',
+                      progress: model.articleProgress(article).total == 0
+                          ? null
+                          : model.articleProgress(article).mastered /
+                                model.articleProgress(article).total,
+                      icon: CupertinoIcons.book,
+                      onTap: () =>
+                          Navigator.of(context, rootNavigator: true).push(
+                            CupertinoPageRoute(
+                              builder: (_) =>
+                                  ArticlePage(model: model, article: article),
+                            ),
+                          ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  const CardSection(
+                    child: Text(
+                      '先保存原文与段落，再把文章加入计划。每一节都可以单独阅读、考核和复习。',
+                      style: Design.caption,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
 }
 
 class ImportPage extends StatefulWidget {

@@ -78,6 +78,7 @@ class DetailRow extends StatelessWidget {
     this.onTap,
     this.done = false,
     this.inset = true,
+    this.progress,
   });
   final String title;
   final String subtitle;
@@ -85,6 +86,7 @@ class DetailRow extends StatelessWidget {
   final VoidCallback? onTap;
   final bool done;
   final bool inset;
+  final double? progress;
   @override
   Widget build(BuildContext context) => Container(
     margin: EdgeInsets.symmetric(
@@ -114,7 +116,16 @@ class DetailRow extends StatelessWidget {
       title: Text(title, maxLines: 3, overflow: TextOverflow.ellipsis),
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 3),
-        child: Text(subtitle, maxLines: 3, style: Design.caption),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(subtitle, maxLines: 3, style: Design.caption),
+            if (progress != null) ...[
+              const SizedBox(height: 8),
+              ProgressBar(value: progress!),
+            ],
+          ],
+        ),
       ),
       trailing: onTap == null ? null : const CupertinoListTileChevron(),
       onTap: onTap,

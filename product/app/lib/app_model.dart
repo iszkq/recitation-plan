@@ -11,6 +11,7 @@ class AppModel extends ChangeNotifier {
   List<LearningEvent> events = [];
   Map<String, Segment> segments = {};
   Map<String, String> articleNames = {};
+  Map<String, String> segmentArticleIds = {};
   DateTime get today {
     final local = localTime(DateTime.now().toUtc(), 'Asia/Shanghai');
     return DateTime(local.year, local.month, local.day);
@@ -23,6 +24,7 @@ class AppModel extends ChangeNotifier {
     events = await store.events();
     segments = {};
     articleNames = {};
+    segmentArticleIds = {};
     for (final task in tasks) {
       final s = await store.getSegment(task.segmentId);
       if (s != null) segments[s.id] = s;
@@ -33,12 +35,14 @@ class AppModel extends ChangeNotifier {
         for (final s in v.segments) {
           segments[s.id] = s;
           articleNames[s.id] = article.title;
+          segmentArticleIds[s.id] = article.id;
         }
       }
     }
     for (final s in segments.values.toList()) {
       if (articleNames.containsKey(s.id)) continue;
       final v = await store.getArticleVersion(s.versionId);
+      if (v != null) segmentArticleIds[s.id] = v.articleId;
       for (final a in articles) {
         if (a.id == v?.articleId) articleNames[s.id] = a.title;
       }
@@ -58,6 +62,31 @@ class AppModel extends ChangeNotifier {
         ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
   String taskTitle(Task t) =>
       '${articleNames[t.segmentId] ?? '文章'} · 第${(segments[t.segmentId]?.order ?? 0) + 1}节';
+  ({int total, int mastered, bool active}) articleProgress(Article article) {
+    final ids = segments.values
+        .where((s) => s.versionId == article.currentVersionId)
+        .map((s) => s.id)
+        .toSet();
+    final completed = tasks
+        .where(
+          (t) =>
+              t.kind == TaskKind.newLearning &&
+              t.status == TaskStatus.completed &&
+              ids.contains(t.segmentId),
+        )
+        .map((t) => t.segmentId)
+        .toSet();
+    return (
+      total: ids.length,
+      mastered: completed.length,
+      active: plans.any(
+        (p) =>
+            !p.paused &&
+            p.segmentIds.any((id) => segmentArticleIds[id] == article.id),
+      ),
+    );
+  }
+
   LearningReport report(ReportPeriod period, DateTime anchor) => buildReport(
     period: period,
     anchor: anchor,

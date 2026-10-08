@@ -23,6 +23,43 @@ Widget host(Widget child) => CupertinoApp(
 );
 
 void main() {
+  testWidgets('文库按标题或作者搜索，并按真实背诵进度筛选', (tester) async {
+    final model = await fixture();
+    await model.service.importArticle(
+      title: '劝学',
+      author: '荀子',
+      text: '青，取之于蓝。',
+    );
+    await model.reload();
+    await tester.pumpWidget(host(LibraryPage(model: model)));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(EditableText), '荀子');
+    await tester.pumpAndSettle();
+    expect(find.text('劝学'), findsOneWidget);
+    expect(find.text('课文'), findsNothing);
+    await tester.enterText(find.byType(EditableText), '不存在');
+    await tester.pumpAndSettle();
+    expect(find.text('没有找到相关文章'), findsOneWidget);
+    await tester.enterText(find.byType(EditableText), '');
+    await tester.tap(find.text('背诵中'));
+    await tester.pumpAndSettle();
+    expect(find.text('课文'), findsOneWidget);
+    expect(find.text('劝学'), findsNothing);
+    final task = model.dueTasks.single;
+    await model.service.submitFinalTranscript(
+      taskId: task.id,
+      attemptId: 'library-pass',
+      transcript: '学不可以已',
+      isFinal: true,
+    );
+    await model.reload();
+    await tester.tap(find.text('已完成'));
+    await tester.pumpAndSettle();
+    expect(find.text('课文'), findsOneWidget);
+    expect(find.textContaining('1节已掌握'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('文章保存后详情更新，计划设置编辑和删除可操作', (tester) async {
     final model = await fixture();
     final article = model.articles.single;
