@@ -414,6 +414,7 @@ class _SegmentPreviewPageState extends State<SegmentPreviewPage> {
       await widget.model.reload();
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
+      if (mounted) setState(() => busy = false);
       if (mounted) await showError(context, e);
     } finally {
       if (mounted) setState(() => busy = false);
