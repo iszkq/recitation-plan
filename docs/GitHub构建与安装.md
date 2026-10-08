@@ -22,7 +22,7 @@
 2. 检查通过后，macOS 使用 Xcode 编译 `flutter build ios --release --no-codesign`。
 3. 成功时下载 `ios-unsigned-ipa` 构建产物，其中包含 IPA 与 SHA-256 校验值。
 
-工作流配置已写入，尚未在 GitHub 执行，不能把它视为 iOS 编译已通过。首次运行应根据 macOS/Xcode 和插件诊断修复平台问题。
+运行记录：Actions `37747539181` 已通过核心 37 项测试、App 的 5 项页面测试，并完成 macOS/Xcode iOS Release 编译。构建日志确认 `Xcode build done`，产物校验通过。
 
 `recitation-plan-unsigned.ipa` 内含 `Payload/Runner.app`，属于未签名包，安装前需重新签名；不能直接用于 TestFlight。
 

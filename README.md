@@ -18,7 +18,7 @@
 
 Dart SDK 已安装在工作区 `.tools/dart-sdk`，无需修改全局 PATH。复验运行 `scripts/check-core.ps1`；真实本机闭环结果见 `output/local-verification/verification.json`。
 
-Flutter 工具链位于 `.tools/flutter`。GitHub Actions 已配置核心测试、App 检查及 macOS 未签名 iOS 构建；工作流尚未在 GitHub 运行。Windows 本地不能验证 iOS 编译和签名，未签名产物不能直接安装到 iPhone。
+Flutter 工具链位于 `.tools/flutter`。GitHub Actions 已完成核心测试、App 检查及 macOS 未签名 iOS 构建。Windows 本地不能验证 iOS 签名，未签名产物不能直接安装到 iPhone。
 
 计划已支持多篇文章和暂停/继续，分段保存保留确认后的边界，恢复到前台和跨日自动刷新任务。未到日期的任务不能提前考核通过。仓库：https://github.com/iszkq/recitation-plan 。Actions 成功后产出需自行签名的 `recitation-plan-unsigned.ipa`。
 
