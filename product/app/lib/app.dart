@@ -292,6 +292,7 @@ class _ImportPageState extends State<ImportPage> {
         author: author.text,
         text: text.text,
       );
+      setState(() => busy = false);
       final saved = await Navigator.of(context, rootNavigator: true).push<bool>(
         CupertinoPageRoute(
           builder: (_) =>

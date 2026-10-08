@@ -97,9 +97,22 @@ void main() {
     await model.reload();
     await tester.pumpWidget(
       CupertinoApp(
-        home: PlanCreatePage(model: model, article: first),
+        home: CupertinoPageScaffold(
+          child: Builder(
+            builder: (context) => CupertinoButton(
+              onPressed: () => Navigator.push(
+                context,
+                CupertinoPageRoute(
+                  builder: (_) => PlanCreatePage(model: model, article: first),
+                ),
+              ),
+              child: const Text('进入计划表单'),
+            ),
+          ),
+        ),
       ),
     );
+    await tester.tap(find.text('进入计划表单'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('计划文章 · 1篇'));
     await tester.pumpAndSettle();
