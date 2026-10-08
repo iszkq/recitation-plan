@@ -8,6 +8,7 @@ import 'models.dart';
 import 'ports.dart';
 import 'review_scheduler.dart';
 import 'scheduler.dart';
+import 'normalization.dart';
 
 bool _zonesInitialized = false;
 DateTime eventLocalTime(LearningEvent event) =>
@@ -119,6 +120,68 @@ class RecitationService {
       timeZone: plan.timeZone,
       paused: paused,
     ));
+  }
+
+  Future<void> updatePlan(Plan plan) async {
+    final current = await store.getPlan(plan.id);
+    if (current == null) throw StateError('计划不存在');
+    if (plan.name.trim().isEmpty) throw ArgumentError('计划名称不能为空');
+    await store.savePlan(plan);
+  }
+
+  Future<void> deletePlan(String planId) async {
+    if (await store.getPlan(planId) == null) throw StateError('计划不存在');
+    await store.deletePlan(planId);
+  }
+
+  Future<Article> updateArticle({
+    required Article article,
+    required String title,
+    String? author,
+    required List<String> segments,
+  }) async {
+    if (title.trim().isEmpty) throw const FormatException('文章标题不能为空');
+    if (segments.any((s) => normalizeForAssessment(s).isEmpty)) {
+      throw const FormatException('每节都需要有效正文');
+    }
+    final now = _clock().toUtc();
+    final versionId = _id();
+    final current = await store.getArticle(article.id);
+    if (current == null) throw StateError('文章不存在');
+    final version = ArticleVersion(
+      id: versionId,
+      articleId: article.id,
+      version:
+          ((await store.getArticleVersion(article.currentVersionId))?.version ??
+              0) +
+          1,
+      segments: buildSegments(versionId: versionId, texts: segments),
+      createdAt: now,
+      changeNote: '编辑文章',
+    );
+    final updated = Article(
+      id: article.id,
+      title: title.trim(),
+      author: author?.trim().isEmpty == true ? null : author?.trim(),
+      currentVersionId: versionId,
+      createdAt: article.createdAt,
+      updatedAt: now,
+    );
+    await store
+        .writeBatch(RecitationBatch(articles: [updated], versions: [version]));
+    return updated;
+  }
+
+  Future<void> deleteArticle(String articleId) async {
+    final article = await store.getArticle(articleId);
+    if (article == null) throw StateError('文章不存在');
+    final version = await store.getArticleVersion(article.currentVersionId);
+    final ids = version?.segments.map((s) => s.id).toSet() ?? <String>{};
+    final plans = await store.plans();
+    if (plans.any((p) => p.segmentIds.any(ids.contains))) {
+      throw StateError('这篇文章已加入学习计划，请先删除相关计划');
+    }
+    await store.deleteArticle(articleId);
   }
 
   Future<Attempt> submitFinalTranscript(

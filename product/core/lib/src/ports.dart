@@ -34,9 +34,11 @@ abstract interface class RecitationStore {
   Future<List<LearningEvent>> events();
   Future<void> saveArticle(Article article);
   Future<void> saveArticleVersion(ArticleVersion version);
+  Future<void> deleteArticle(String id);
   Future<Article?> getArticle(String id);
   Future<ArticleVersion?> getArticleVersion(String id);
   Future<void> savePlan(Plan plan);
+  Future<void> deletePlan(String id);
   Future<void> saveTask(Task task);
   Future<List<Task>> tasksForDay(DateTime localDay);
   Future<void> saveAttempt(Attempt attempt);

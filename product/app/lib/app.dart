@@ -11,6 +11,7 @@ import 'package:recitation_core/recitation_core.dart';
 
 import 'app_model.dart';
 import 'design.dart';
+import 'speech.dart';
 
 class RecitationApp extends StatelessWidget {
   const RecitationApp({super.key, required this.model});
@@ -144,7 +145,34 @@ class TodayPage extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 26),
+                  const SizedBox(height: 18),
+                  CardSection(
+                    padding: const EdgeInsets.all(18),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          CupertinoIcons.sun_max,
+                          color: Design.accent,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            tasks.isEmpty ? '安排一小节，今天就开始' : '完成今天的任务，保持学习节奏',
+                            style: Design.caption,
+                          ),
+                        ),
+                        Text(
+                          '${tasks.length}',
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   if (tasks.isEmpty && model.articles.isEmpty)
                     EmptyContent(
                       '先导入一篇文章',
@@ -241,8 +269,24 @@ class LibraryPage extends StatelessWidget {
               ),
             )
           : ListView(
-              padding: const EdgeInsets.only(top: 12),
+              padding: const EdgeInsets.only(top: 12, bottom: 24),
               children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    Design.inset,
+                    8,
+                    Design.inset,
+                    10,
+                  ),
+                  child: Text(
+                    '你的文章',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ),
                 for (final article in model.articles)
                   DetailRow(
                     title: article.title,
@@ -317,26 +361,32 @@ class _ImportPageState extends State<ImportPage> {
           const Text('准备原文', style: Design.heading),
           const SizedBox(height: 8),
           const Text('建议段落之间空一行，保存前会先检查分段。', style: Design.caption),
-          const SizedBox(height: 24),
-          CupertinoTextField(
-            controller: title,
-            placeholder: '文章标题',
-            padding: const EdgeInsets.all(16),
-          ),
-          const SizedBox(height: 12),
-          CupertinoTextField(
-            controller: author,
-            placeholder: '作者（可选）',
-            padding: const EdgeInsets.all(16),
-          ),
-          const SizedBox(height: 12),
-          CupertinoTextField(
-            controller: text,
-            placeholder: '粘贴正文',
-            maxLines: 14,
-            minLines: 10,
-            padding: const EdgeInsets.all(16),
-            textAlignVertical: TextAlignVertical.top,
+          const SizedBox(height: 20),
+          CardSection(
+            child: Column(
+              children: [
+                CupertinoTextField(
+                  controller: title,
+                  placeholder: '文章标题',
+                  padding: const EdgeInsets.all(15),
+                ),
+                const SizedBox(height: 12),
+                CupertinoTextField(
+                  controller: author,
+                  placeholder: '作者（可选）',
+                  padding: const EdgeInsets.all(15),
+                ),
+                const SizedBox(height: 12),
+                CupertinoTextField(
+                  controller: text,
+                  placeholder: '粘贴正文',
+                  maxLines: 14,
+                  minLines: 10,
+                  padding: const EdgeInsets.all(15),
+                  textAlignVertical: TextAlignVertical.top,
+                ),
+              ],
+            ),
           ),
           PrimaryAction('预览分段', onPressed: save, busy: busy),
           CupertinoButton(
@@ -429,17 +479,23 @@ class _SegmentPreviewPageState extends State<SegmentPreviewPage> {
         padding: const EdgeInsets.all(Design.inset),
         children: [
           Text(widget.draft.title, style: Design.heading),
-          const SizedBox(height: Design.gap),
+          const SizedBox(height: 8),
           Text('共 ${sections.length} 节', style: Design.caption),
+          const SizedBox(height: 4),
+          const Text('可直接修改或重新拆分', style: Design.caption),
           for (var i = 0; i < sections.length; i++) ...[
             const SizedBox(height: Design.sectionGap),
             Text('第${i + 1}节'),
             const SizedBox(height: 8),
-            CupertinoTextField(
-              controller: sections[i],
-              minLines: 3,
-              maxLines: 8,
-              padding: const EdgeInsets.all(12),
+            CardSection(
+              padding: const EdgeInsets.all(14),
+              child: CupertinoTextField(
+                controller: sections[i],
+                minLines: 3,
+                maxLines: 8,
+                padding: const EdgeInsets.all(12),
+                textAlignVertical: TextAlignVertical.top,
+              ),
             ),
             Wrap(
               children: [
@@ -491,7 +547,61 @@ class ArticlePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final version = model.store.getArticleVersion(article.currentVersionId);
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(middle: Text(article.title)),
+      navigationBar: CupertinoNavigationBar(
+        middle: Text(article.title),
+        trailing: CupertinoButton(
+          padding: EdgeInsets.zero,
+          child: const Icon(CupertinoIcons.ellipsis_circle),
+          onPressed: () async {
+            final action = await showCupertinoModalPopup<String>(
+              context: context,
+              builder: (c) => CupertinoActionSheet(
+                title: const Text('文章操作'),
+                actions: [
+                  CupertinoActionSheetAction(
+                    onPressed: () => Navigator.pop(c, 'edit'),
+                    child: const Text('编辑文章'),
+                  ),
+                  CupertinoActionSheetAction(
+                    isDestructiveAction: true,
+                    onPressed: () => Navigator.pop(c, 'delete'),
+                    child: const Text('删除文章'),
+                  ),
+                ],
+                cancelButton: CupertinoActionSheetAction(
+                  onPressed: () => Navigator.pop(c),
+                  child: const Text('取消'),
+                ),
+              ),
+            );
+            if (!context.mounted) return;
+            if (action == 'edit') {
+              await Navigator.of(context, rootNavigator: true).push(
+                CupertinoPageRoute(
+                  builder: (_) =>
+                      ArticleEditPage(model: model, article: article),
+                ),
+              );
+              return;
+            }
+            if (action == 'delete' &&
+                await confirm(
+                  context,
+                  '删除文章？',
+                  '删除后原文将从文库移除，历史考核记录会保留。',
+                  action: '删除',
+                )) {
+              try {
+                await model.service.deleteArticle(article.id);
+                await model.reload();
+                if (context.mounted) Navigator.pop(context);
+              } catch (e) {
+                if (context.mounted) await showError(context, e);
+              }
+            }
+          },
+        ),
+      ),
       child: SafeArea(
         child: FutureBuilder<ArticleVersion?>(
           future: version,
@@ -548,6 +658,119 @@ class ArticlePage extends StatelessWidget {
   }
 }
 
+class ArticleEditPage extends StatefulWidget {
+  const ArticleEditPage({
+    super.key,
+    required this.model,
+    required this.article,
+  });
+  final AppModel model;
+  final Article article;
+  @override
+  State<ArticleEditPage> createState() => _ArticleEditPageState();
+}
+
+class _ArticleEditPageState extends State<ArticleEditPage> {
+  final title = TextEditingController();
+  final author = TextEditingController();
+  final sections = <TextEditingController>[];
+  bool busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    title.text = widget.article.title;
+    author.text = widget.article.author ?? '';
+    widget.model.store.getArticleVersion(widget.article.currentVersionId).then((
+      version,
+    ) {
+      if (!mounted || version == null) return;
+      setState(
+        () => sections.addAll(
+          version.segments.map((s) => TextEditingController(text: s.text)),
+        ),
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    title.dispose();
+    author.dispose();
+    for (final c in sections) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> save() async {
+    if (busy) return;
+    setState(() => busy = true);
+    try {
+      await widget.model.service.updateArticle(
+        article: widget.article,
+        title: title.text,
+        author: author.text,
+        segments: sections.map((c) => c.text).toList(),
+      );
+      await widget.model.reload();
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) await showError(context, e);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => CupertinoPageScaffold(
+    navigationBar: const CupertinoNavigationBar(middle: Text('编辑文章')),
+    child: SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.all(Design.inset),
+        children: [
+          const Text('修改内容', style: Design.heading),
+          const SizedBox(height: 8),
+          const Text('保存后会生成新的原文版本，历史成绩继续保留。', style: Design.caption),
+          const SizedBox(height: 20),
+          CupertinoTextField(
+            controller: title,
+            placeholder: '文章标题',
+            padding: const EdgeInsets.all(15),
+          ),
+          const SizedBox(height: 10),
+          CupertinoTextField(
+            controller: author,
+            placeholder: '作者（可选）',
+            padding: const EdgeInsets.all(15),
+          ),
+          if (sections.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: CupertinoActivityIndicator(),
+            ),
+          for (var i = 0; i < sections.length; i++) ...[
+            const SizedBox(height: 18),
+            Text('第${i + 1}节', style: Design.caption),
+            const SizedBox(height: 6),
+            CupertinoTextField(
+              controller: sections[i],
+              minLines: 3,
+              maxLines: 8,
+              padding: const EdgeInsets.all(14),
+            ),
+          ],
+          PrimaryAction(
+            '保存修改',
+            onPressed: sections.isEmpty ? null : save,
+            busy: busy,
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 class PlansPage extends StatelessWidget {
   const PlansPage({super.key, required this.model});
   final AppModel model;
@@ -571,8 +794,24 @@ class PlansPage extends StatelessWidget {
       child: model.plans.isEmpty
           ? EmptyContent('还没有学习计划', '先导入文章，再决定每天背几节。')
           : ListView(
-              padding: const EdgeInsets.only(top: 12),
+              padding: const EdgeInsets.only(top: 12, bottom: 24),
               children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    Design.inset,
+                    8,
+                    Design.inset,
+                    10,
+                  ),
+                  child: Text(
+                    '学习计划',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ),
                 for (final plan in model.plans)
                   DetailRow(
                     title: plan.name,
@@ -647,6 +886,18 @@ class TaskReadingPage extends StatelessWidget {
                   )
                 : null,
           ),
+          CupertinoButton(
+            onPressed: model.segments.containsKey(task.segmentId)
+                ? () => Navigator.pushReplacement(
+                    context,
+                    CupertinoPageRoute(
+                      builder: (_) =>
+                          SpeechAssessmentPage(model: model, task: task),
+                    ),
+                  )
+                : null,
+            child: const Text('语音输入考核'),
+          ),
         ],
       ),
     ),
@@ -711,7 +962,58 @@ class PlanDetailPage extends StatelessWidget {
         )
         .length;
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(middle: Text(current.name)),
+      navigationBar: CupertinoNavigationBar(
+        middle: Text(current.name),
+        trailing: CupertinoButton(
+          padding: EdgeInsets.zero,
+          child: const Icon(CupertinoIcons.ellipsis_circle),
+          onPressed: () async {
+            final action = await showCupertinoModalPopup<String>(
+              context: context,
+              builder: (c) => CupertinoActionSheet(
+                title: const Text('计划操作'),
+                actions: [
+                  CupertinoActionSheetAction(
+                    onPressed: () => Navigator.pop(c, 'edit'),
+                    child: const Text('编辑计划'),
+                  ),
+                  CupertinoActionSheetAction(
+                    isDestructiveAction: true,
+                    onPressed: () => Navigator.pop(c, 'delete'),
+                    child: const Text('删除计划'),
+                  ),
+                ],
+                cancelButton: CupertinoActionSheetAction(
+                  onPressed: () => Navigator.pop(c),
+                  child: const Text('取消'),
+                ),
+              ),
+            );
+            if (!context.mounted) return;
+            if (action == 'edit') {
+              await Navigator.of(context, rootNavigator: true).push(
+                CupertinoPageRoute(
+                  builder: (_) => PlanEditPage(model: model, plan: current),
+                ),
+              );
+            } else if (action == 'delete' &&
+                await confirm(
+                  context,
+                  '删除计划？',
+                  '已完成的历史记录会保留，未完成任务会从计划中移除。',
+                  action: '删除',
+                )) {
+              try {
+                await model.service.deletePlan(current.id);
+                await model.reload();
+                if (context.mounted) Navigator.pop(context);
+              } catch (e) {
+                if (context.mounted) await showError(context, e);
+              }
+            }
+          },
+        ),
+      ),
       child: SafeArea(
         child: ListView(
           children: [
@@ -756,6 +1058,97 @@ class PlanDetailPage extends StatelessWidget {
       ),
     );
   }
+}
+
+class PlanEditPage extends StatefulWidget {
+  const PlanEditPage({super.key, required this.model, required this.plan});
+  final AppModel model;
+  final Plan plan;
+  @override
+  State<PlanEditPage> createState() => _PlanEditPageState();
+}
+
+class _PlanEditPageState extends State<PlanEditPage> {
+  late final TextEditingController name = TextEditingController(
+    text: widget.plan.name,
+  );
+  late double accuracy = widget.plan.rule.accuracyThreshold.toDouble();
+  late double coverage = widget.plan.rule.coverageThreshold.toDouble();
+  bool busy = false;
+
+  @override
+  void dispose() {
+    name.dispose();
+    super.dispose();
+  }
+
+  Future<void> save() async {
+    setState(() => busy = true);
+    try {
+      await widget.model.service.updatePlan(
+        Plan(
+          id: widget.plan.id,
+          name: name.text.trim(),
+          segmentIds: widget.plan.segmentIds,
+          startDate: widget.plan.startDate,
+          endDate: widget.plan.endDate,
+          dailyNewQuota: widget.plan.dailyNewQuota,
+          weekdays: widget.plan.weekdays,
+          timeZone: widget.plan.timeZone,
+          paused: widget.plan.paused,
+          rule: AssessmentRule(
+            accuracyThreshold: accuracy.round(),
+            coverageThreshold: coverage.round(),
+          ),
+        ),
+      );
+      await widget.model.reload();
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) await showError(context, e);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => CupertinoPageScaffold(
+    navigationBar: const CupertinoNavigationBar(middle: Text('编辑计划')),
+    child: SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.all(Design.inset),
+        children: [
+          const Text('计划设置', style: Design.heading),
+          const SizedBox(height: 8),
+          const Text('修改名称和考核标准，原有任务与历史记录会保留。', style: Design.caption),
+          const SizedBox(height: 20),
+          CupertinoTextField(
+            controller: name,
+            placeholder: '计划名称',
+            padding: const EdgeInsets.all(15),
+          ),
+          const SizedBox(height: 24),
+          Text('一致率至少 ${accuracy.round()}%'),
+          CupertinoSlider(
+            value: accuracy,
+            min: 80,
+            max: 100,
+            divisions: 20,
+            onChanged: busy ? null : (v) => setState(() => accuracy = v),
+          ),
+          Text('覆盖率至少 ${coverage.round()}%'),
+          CupertinoSlider(
+            value: coverage,
+            min: 80,
+            max: 100,
+            divisions: 20,
+            onChanged: busy ? null : (v) => setState(() => coverage = v),
+          ),
+          PrimaryAction('保存计划', onPressed: save, busy: busy),
+        ],
+      ),
+    ),
+  );
 }
 
 class PlanPauseControl extends StatefulWidget {
@@ -1092,6 +1485,257 @@ class _PlanCreatePageState extends State<PlanCreatePage> {
   );
 }
 
+class SpeechAssessmentPage extends StatefulWidget {
+  const SpeechAssessmentPage({
+    super.key,
+    required this.model,
+    required this.task,
+  });
+  final AppModel model;
+  final Task task;
+  @override
+  State<SpeechAssessmentPage> createState() => _SpeechAssessmentPageState();
+}
+
+class _SpeechAssessmentPageState extends State<SpeechAssessmentPage> {
+  late final IosSpeechProvider provider;
+  StreamSubscription<SpeechUpdate>? subscription;
+  SpeechState state = SpeechState.idle;
+  String transcript = '';
+  String? error;
+  bool busy = false;
+  Attempt? result;
+  late String attemptId;
+  final active = Stopwatch();
+
+  @override
+  void initState() {
+    super.initState();
+    provider = IosSpeechProvider();
+    attemptId = createLocalId();
+    subscription = provider.updates.listen((update) {
+      if (!mounted) return;
+      setState(() {
+        state = update.state;
+        transcript = update.finalText ?? update.interimText;
+        error = update.error;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    subscription?.cancel();
+    provider.cancel();
+    provider.dispose();
+    active.stop();
+    super.dispose();
+  }
+
+  Future<void> start() async {
+    setState(() {
+      error = null;
+      state = SpeechState.idle;
+      transcript = '';
+    });
+    if (!await provider.requestPermission()) {
+      setState(() {
+        state = SpeechState.unavailable;
+        error = '需要麦克风和语音识别权限，请在系统设置中允许后重试';
+      });
+      return;
+    }
+    try {
+      await provider.start(locale: 'zh-CN');
+      active.start();
+    } catch (e) {
+      setState(() {
+        state = SpeechState.failed;
+        error = '$e';
+      });
+    }
+  }
+
+  Future<void> finish() async {
+    if (state != SpeechState.recording) return;
+    active.stop();
+    setState(() {
+      state = SpeechState.finalizing;
+      busy = true;
+    });
+    try {
+      final update = await provider.stopAndFinalize();
+      final text = update.finalText ?? transcript;
+      if (normalizeForAssessment(text).isEmpty) {
+        throw StateError('没有识别到有效内容，请重新背诵');
+      }
+      final attempt = await widget.model.service.submitFinalTranscript(
+        taskId: widget.task.id,
+        attemptId: attemptId,
+        transcript: text,
+        isFinal: true,
+        activeSeconds: active.elapsed.inSeconds,
+      );
+      await widget.model.reload();
+      if (mounted) {
+        setState(() {
+          result = attempt;
+          state = SpeechState.ready;
+          transcript = text;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          state = SpeechState.failed;
+          error = e is StateError ? e.message : '识别或校对失败，请重试';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  void retry() {
+    setState(() {
+      result = null;
+      attemptId = createLocalId();
+      transcript = '';
+      error = null;
+      state = SpeechState.idle;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final score = result?.score;
+    final recording = state == SpeechState.recording;
+    final finalizing = state == SpeechState.finalizing || busy;
+    return CupertinoPageScaffold(
+      navigationBar: const CupertinoNavigationBar(middle: Text('语音考核')),
+      child: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(Design.inset),
+          children: [
+            Text(widget.model.taskTitle(widget.task), style: Design.heading),
+            const SizedBox(height: 8),
+            Text(
+              recording ? '请自然背诵，结束后系统会用最终转录和原文校对。' : '原文已隐藏，准备好后开始录音。',
+              style: Design.caption,
+            ),
+            const SizedBox(height: 22),
+            CardSection(
+              child: Column(
+                children: [
+                  Icon(
+                    recording ? CupertinoIcons.mic_fill : CupertinoIcons.mic,
+                    size: 46,
+                    color: recording ? Design.error : Design.accent,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    finalizing
+                        ? '正在生成最终结果'
+                        : recording
+                        ? '正在聆听'
+                        : state == SpeechState.ready
+                        ? '已完成校对'
+                        : '等待开始',
+                    style: const TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ProgressBar(
+                    value: recording
+                        ? .55
+                        : finalizing
+                        ? .8
+                        : result == null
+                        ? 0
+                        : 1,
+                    color: recording ? Design.error : Design.accent,
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    transcript.isEmpty ? '实时转录仅用于显示进度，最终结果才参与考核。' : transcript,
+                    style: Design.caption,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            if (error != null) ...[
+              const SizedBox(height: 12),
+              CardSection(
+                child: Row(
+                  children: [
+                    const Icon(
+                      CupertinoIcons.exclamationmark_triangle,
+                      color: Design.error,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        error!,
+                        style: const TextStyle(color: Design.error),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (result != null && score != null) ...[
+              const SizedBox(height: 16),
+              CardSection(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    StatusChip(
+                      result!.status == AttemptStatus.passed
+                          ? '考核通过'
+                          : result!.status == AttemptStatus.needsReview
+                          ? '识别待确认'
+                          : '仍需练习',
+                      color: result!.status == AttemptStatus.passed
+                          ? Design.success
+                          : Design.error,
+                      background: result!.status == AttemptStatus.passed
+                          ? const Color(0xFFEDF8F1)
+                          : const Color(0xFFFFF0EE),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '${score.accuracy.toStringAsFixed(1)}%',
+                      style: const TextStyle(
+                        fontSize: 36,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      '内容一致率 · 原文覆盖率 ${score.coverage.toStringAsFixed(1)}%',
+                      style: Design.caption,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (result == null && !recording && !finalizing)
+              PrimaryAction('开始录音', onPressed: start),
+            if (recording) PrimaryAction('结束并校对', onPressed: finish),
+            if (result != null) PrimaryAction('再次考核', onPressed: retry),
+            CupertinoButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('退出考核'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class TextAssessmentPage extends StatefulWidget {
   const TextAssessmentPage({
     super.key,
@@ -1353,25 +1997,55 @@ class _ReportsPageState extends State<ReportsPage> {
               style: Design.caption,
             ),
             const SizedBox(height: Design.sectionGap),
-            Text(
-              '${r.completedTasks} / ${r.dueTasks} 个到期任务完成',
-              style: Design.heading,
+            CardSection(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${r.completedTasks} / ${r.dueTasks}',
+                    style: const TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text('到期任务完成'),
+                  const SizedBox(height: 16),
+                  ProgressBar(
+                    value: r.dueTasks == 0 ? 0 : r.completedTasks / r.dueTasks,
+                    color: Design.success,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '新掌握 ${r.newMasteredSegments} 节 · 学习 ${r.learningDays} 天',
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '完整打卡 ${r.checkInDays} 天 · 有效学习 ${r.focusMinutes} 分钟',
+                    style: Design.caption,
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: Design.sectionGap),
-            Text('新掌握 ${r.newMasteredSegments} 节'),
             const SizedBox(height: Design.gap),
-            Text('学习 ${r.learningDays} 天 · 完整打卡 ${r.checkInDays} 天'),
-            const SizedBox(height: Design.gap),
-            Text('有效学习 ${r.focusMinutes} 分钟'),
-            const SizedBox(height: Design.sectionGap),
-            Text(
-              r.reviewRetention == null
-                  ? '暂无复习考核'
-                  : '复习考核通过 ${r.reviewPasses} / ${r.reviewAttempts} 次',
-            ),
-            Text(
-              '辅助练习 ${r.assistedPractices} 次 · 人工确认 ${r.manualConfirmations} 次',
-              style: Design.caption,
+            CardSection(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('复习质量', style: Design.heading),
+                  const SizedBox(height: 10),
+                  Text(
+                    r.reviewRetention == null
+                        ? '暂无复习考核'
+                        : '复习考核通过 ${r.reviewPasses} / ${r.reviewAttempts} 次',
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '辅助练习 ${r.assistedPractices} 次 · 人工确认 ${r.manualConfirmations} 次',
+                    style: Design.caption,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -1490,8 +2164,30 @@ class _BackupPageState extends State<BackupPage> {
             '档案包含文章、计划、成绩和复习记录，不包含录音。可通过系统分享保存到文件。',
             style: Design.caption,
           ),
-          PrimaryAction('导出完整档案', onPressed: export, busy: busy),
-          PrimaryAction('从档案恢复', onPressed: restore, busy: busy),
+          const SizedBox(height: Design.gap),
+          CardSection(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('导出', style: Design.heading),
+                const SizedBox(height: 4),
+                const Text('生成一份可保存到文件或云盘的完整档案。', style: Design.caption),
+                PrimaryAction('导出完整档案', onPressed: export, busy: busy),
+              ],
+            ),
+          ),
+          const SizedBox(height: Design.gap),
+          CardSection(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('恢复', style: Design.heading),
+                const SizedBox(height: 4),
+                const Text('恢复前会自动保留当前档案，重复记录不会覆盖。', style: Design.caption),
+                PrimaryAction('从档案恢复', onPressed: restore, busy: busy),
+              ],
+            ),
+          ),
         ],
       ),
     ),

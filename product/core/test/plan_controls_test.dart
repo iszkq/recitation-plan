@@ -91,4 +91,69 @@ void main() {
         throwsStateError);
     expect((await store.getTask(task.id))!.status, TaskStatus.pending);
   });
+
+  test('编辑文章生成新版本并保留文章身份', () async {
+    final article = await service.importArticle(title: '旧标题', text: '旧正文。');
+    final updated = await service.updateArticle(
+      article: article,
+      title: '新标题',
+      author: '作者',
+      segments: const ['新正文。', '第二节。'],
+    );
+    expect(updated.id, article.id);
+    expect(updated.title, '新标题');
+    expect(updated.currentVersionId, isNot(article.currentVersionId));
+    final version = await store.getArticleVersion(updated.currentVersionId);
+    expect(version!.segments, hasLength(2));
+    expect(version.segments.first.text, '新正文。');
+  });
+
+  test('计划中的文章不能直接删除', () async {
+    final article = await service.importArticle(title: '课文', text: '正文。');
+    await service.createPlan(
+      name: '计划',
+      versionIds: [article.currentVersionId],
+      start: DateTime(2026, 10, 8),
+      end: DateTime(2026, 10, 31),
+      quota: 1,
+      weekdays: {1, 2, 3, 4, 5, 6, 7},
+    );
+    await expectLater(service.deleteArticle(article.id), throwsStateError);
+    expect(await store.getArticle(article.id), isNotNull);
+  });
+
+  test('删除计划保留已完成任务，编辑计划保留任务', () async {
+    final article = await service.importArticle(title: '课文', text: '正文。');
+    final plan = await service.createPlan(
+      name: '旧计划',
+      versionIds: [article.currentVersionId],
+      start: DateTime(2026, 10, 8),
+      end: DateTime(2026, 10, 31),
+      quota: 1,
+      weekdays: {1, 2, 3, 4, 5, 6, 7},
+    );
+    final task = (await store.tasks()).single;
+    await service.updatePlan(Plan(
+      id: plan.id,
+      name: '新计划',
+      segmentIds: plan.segmentIds,
+      startDate: plan.startDate,
+      endDate: plan.endDate,
+      dailyNewQuota: plan.dailyNewQuota,
+      weekdays: plan.weekdays,
+      rule: plan.rule,
+      timeZone: plan.timeZone,
+    ));
+    expect((await store.getPlan(plan.id))!.name, '新计划');
+    final result = await service.submitFinalTranscript(
+      taskId: task.id,
+      attemptId: 'completed',
+      transcript: '正文',
+      isFinal: true,
+    );
+    expect(result.status, AttemptStatus.passed);
+    await service.deletePlan(plan.id);
+    expect(await store.getPlan(plan.id), isNull);
+    expect((await store.getTask(task.id))!.status, TaskStatus.completed);
+  });
 }

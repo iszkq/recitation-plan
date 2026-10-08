@@ -24,6 +24,10 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>用于将你的背诵语音转成文字并和原文校对。</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>用于识别你的背诵内容，生成校对结果。</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

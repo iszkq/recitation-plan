@@ -136,8 +136,43 @@ class MemoryRecitationStore implements RecitationStore {
   }
 
   @override
+  Future<void> deleteArticle(String id) async {
+    final operation = _tail.then((_) async {
+      final next = _clone(_state);
+      final article = (next['articles'] as Map<String, dynamic>).remove(id);
+      if (article == null) return;
+      final versions = next['versions'] as Map<String, dynamic>;
+      versions.removeWhere((_, value) => value['articleId'] == id);
+      await persist(next);
+      _state = _clone(next);
+    });
+    _tail = operation.then<void>((_) {},
+        onError: (Object error, StackTrace stack) {});
+    await operation;
+  }
+
+  @override
   Future<void> savePlan(Plan value) async {
     await writeBatch(RecitationBatch(plans: [value]));
+  }
+
+  @override
+  Future<void> deletePlan(String id) async {
+    final operation = _tail.then((_) async {
+      final next = _clone(_state);
+      final plans = next['plans'] as Map<String, dynamic>;
+      if (!plans.containsKey(id)) return;
+      plans.remove(id);
+      final tasks = next['tasks'] as Map<String, dynamic>;
+      tasks.removeWhere((_, value) =>
+          value['planId'] == id &&
+          value['status'] != TaskStatus.completed.name);
+      await persist(next);
+      _state = _clone(next);
+    });
+    _tail = operation.then<void>((_) {},
+        onError: (Object error, StackTrace stack) {});
+    await operation;
   }
 
   @override

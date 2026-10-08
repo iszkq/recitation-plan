@@ -2,6 +2,10 @@ import 'package:flutter/cupertino.dart';
 
 abstract final class Design {
   static const accent = Color(0xFF0066CC);
+  static const accentSoft = Color(0xFFEEF5FF);
+  static const grouped = Color(0xFFF2F2F7);
+  static const line = Color(0xFFE5E5EA);
+  static const panel = Color(0xFFFFFFFF);
   static const ink = Color(0xFF1C1C1E);
   static const secondary = Color(0xFF636366);
   static const success = Color(0xFF187A48);
@@ -15,7 +19,7 @@ abstract final class Design {
   static const theme = CupertinoThemeData(
     brightness: Brightness.light,
     primaryColor: accent,
-    scaffoldBackgroundColor: CupertinoColors.white,
+    scaffoldBackgroundColor: grouped,
     textTheme: CupertinoTextThemeData(
       primaryColor: accent,
       textStyle: TextStyle(
@@ -40,10 +44,11 @@ class PrimaryAction extends StatelessWidget {
   final bool busy;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: Design.gap),
+    padding: const EdgeInsets.only(top: Design.gap, bottom: Design.gap / 2),
     child: SizedBox(
       width: double.infinity,
       child: CupertinoButton.filled(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
         onPressed: busy ? null : onPressed,
         child: busy
             ? const CupertinoActivityIndicator(color: CupertinoColors.white)
@@ -68,19 +73,131 @@ class DetailRow extends StatelessWidget {
   final VoidCallback? onTap;
   final bool done;
   @override
-  Widget build(BuildContext context) => CupertinoListTile(
-    padding: const EdgeInsets.symmetric(
-      vertical: Design.gap,
-      horizontal: Design.inset,
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.symmetric(horizontal: Design.inset, vertical: 6),
+    decoration: BoxDecoration(
+      color: Design.panel,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: Design.line),
     ),
-    leading: Icon(
-      done ? CupertinoIcons.checkmark_circle_fill : icon,
-      color: done ? Design.success : Design.accent,
+    child: CupertinoListTile(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: done ? const Color(0xFFEDF8F1) : Design.accentSoft,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(
+          done ? CupertinoIcons.checkmark_circle_fill : icon,
+          color: done ? Design.success : Design.accent,
+          size: 21,
+        ),
+      ),
+      title: Text(title, maxLines: 3, overflow: TextOverflow.ellipsis),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 3),
+        child: Text(subtitle, maxLines: 3, style: Design.caption),
+      ),
+      trailing: onTap == null ? null : const CupertinoListTileChevron(),
+      onTap: onTap,
     ),
-    title: Text(title, maxLines: 3, overflow: TextOverflow.ellipsis),
-    subtitle: Text(subtitle, maxLines: 3, style: Design.caption),
-    trailing: onTap == null ? null : const CupertinoListTileChevron(),
-    onTap: onTap,
+  );
+}
+
+class CardSection extends StatelessWidget {
+  const CardSection({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(20),
+  });
+  final Widget child;
+  final EdgeInsets padding;
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: padding,
+    decoration: BoxDecoration(
+      color: Design.panel,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: Design.line),
+    ),
+    child: child,
+  );
+}
+
+class ProgressBar extends StatelessWidget {
+  const ProgressBar({
+    super.key,
+    required this.value,
+    this.color = Design.accent,
+  });
+  final double value;
+  final Color color;
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(8),
+    child: Container(
+      height: 8,
+      color: Design.line,
+      alignment: Alignment.centerLeft,
+      child: FractionallySizedBox(
+        widthFactor: value.clamp(0, 1),
+        child: Container(color: color),
+      ),
+    ),
+  );
+}
+
+class StatusChip extends StatelessWidget {
+  const StatusChip(
+    this.label, {
+    super.key,
+    this.color = Design.accent,
+    this.background = Design.accentSoft,
+  });
+  final String label;
+  final Color color;
+  final Color background;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    decoration: BoxDecoration(
+      color: background,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.w600),
+    ),
+  );
+}
+
+class SectionHeader extends StatelessWidget {
+  const SectionHeader(this.title, {super.key, this.action, this.onPressed});
+  final String title;
+  final String? action;
+  final VoidCallback? onPressed;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(Design.inset, 20, Design.inset, 10),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
+        ),
+        if (action != null)
+          CupertinoButton(
+            padding: EdgeInsets.zero,
+            onPressed: onPressed,
+            child: Text(action!),
+          ),
+      ],
+    ),
   );
 }
 
