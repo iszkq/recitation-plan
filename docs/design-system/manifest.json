@@ -1,0 +1,229 @@
+{
+  "version": 2,
+  "updated_at": "2026-10-08",
+  "system_origin": "greenfield",
+  "product": {
+    "name": "背诵计划",
+    "category": "中文文章背诵与语音校对",
+    "audience": "需要逐段记忆课文、古文、演讲稿的个人学习者",
+    "platforms": [
+      "iOS 优先",
+      "Flutter 二次开发",
+      "HTML 设计原型"
+    ],
+    "primary_workflows": [
+      "导入并分段",
+      "制定月度计划",
+      "今日任务",
+      "语音背诵",
+      "校对并达标打卡",
+      "间隔复习",
+      "本机档案与可选账户备份",
+      "周报、月报与年报"
+    ]
+  },
+  "sources": {
+    "brief": [
+      "用户要求中文界面，全文分段、月度目标、语音转录校对、阈值打卡",
+      "用户明确选择纯白简洁、系统 iOS 风格",
+      "用户要求直接显示中文，不加中文界面标签",
+      "用户询问个人账户、数据保留和周月年报"
+    ],
+    "references": [
+      "系统 iOS 大标题、列表、底部导航与安全区",
+      "Remember Me 的文本背诵与复习业务",
+      "Apple Speech 官方转录示例"
+    ],
+    "figma": [],
+    "website": [
+      "https://www.remem.me/",
+      "https://gitlab.com/remem-me/app",
+      "https://developer.apple.com/design/human-interface-guidelines/",
+      "https://swiftandcurious.com/2025/12/01/memorizeme/"
+    ],
+    "screenshots": [],
+    "brand_docs": []
+  },
+  "direction": {
+    "name": "纯白系统 iOS",
+    "mood": "安静、清晰、阅读优先",
+    "principles": [
+      "大标题与留白建立层级",
+      "列表组织文章与段落",
+      "每页只有一个主要行动",
+      "蓝色表示操作，绿/橙/红只表示状态",
+      "用可读文字解释评分"
+    ],
+    "anti_principles": [
+      "装饰性渐变",
+      "满屏卡片嵌套",
+      "以排行榜替代学习任务",
+      "仅用颜色传达错误",
+      "正文过小或被截断"
+    ]
+  },
+  "tokens": {
+    "colors": {
+      "background": "#FFFFFF",
+      "grouped": "#F2F2F7",
+      "surface": "#FFFFFF",
+      "text": "#1C1C1E",
+      "secondary": "#636366",
+      "line": "#E5E5EA",
+      "accent": "#0066CC",
+      "accentSoft": "#EEF5FF",
+      "success": "#187A48",
+      "successSoft": "#EDF8F1",
+      "warning": "#8B5700",
+      "warningSoft": "#FFF6E6",
+      "error": "#B42318",
+      "errorSoft": "#FFF0EE"
+    },
+    "typography": {
+      "family": "system-ui, PingFang SC, Microsoft YaHei, sans-serif",
+      "display": "32px / 1.15 / 700",
+      "heading": "22px / 1.3 / 650",
+      "body": "17px / 1.55 / 400",
+      "reading": "20px / 1.8 / 400",
+      "label": "15px / 1.4 / 600",
+      "caption": "13px / 1.45 / 400",
+      "numeric": "tabular-nums"
+    },
+    "spacing": {
+      "scale": [
+        4,
+        8,
+        12,
+        16,
+        20,
+        24,
+        32,
+        40
+      ],
+      "screenInset": 24,
+      "sectionGap": 24
+    },
+    "radius": {
+      "input": 10,
+      "panel": 16,
+      "sheet": 24,
+      "pill": 999
+    },
+    "shadows": {
+      "app": "none",
+      "presentationFrame": "0 14px 40px rgba(0,0,0,.07)"
+    },
+    "breakpoints": {
+      "mobile": 480,
+      "tablet": 800,
+      "desktop": 1200
+    },
+    "motion": {
+      "feedback": "120ms",
+      "transition": "200ms",
+      "recording": "仅录音波形变化；减少动态时使用静态指示",
+      "reduced": "关闭非必要动画"
+    }
+  },
+  "components": {
+    "NavigationBar": {
+      "height": 48,
+      "backTarget": 44
+    },
+    "PrimaryButton": {
+      "height": 52,
+      "radius": 14,
+      "fullWidth": true
+    },
+    "ListRow": {
+      "minHeight": 64,
+      "separator": "inset"
+    },
+    "BottomTabs": {
+      "height": 64,
+      "items": [
+        "今日",
+        "文库",
+        "计划",
+        "我的"
+      ]
+    },
+    "ReadingBlock": {
+      "fontSize": 20,
+      "lineHeight": 1.8
+    },
+    "ScoreSummary": {
+      "numericSize": 56,
+      "alwaysExplainGate": true
+    },
+    "DiffSpan": {
+      "states": [
+        "匹配",
+        "漏背",
+        "错词",
+        "识别待确认"
+      ],
+      "textLabelRequired": true
+    }
+  },
+  "layout": {
+    "grid": "移动端单列；展示板三列手机画面；窄屏单列",
+    "page_width": "参考画面 390×844 CSS px；实际移动界面占满视口",
+    "section_rhythm": "24px；列表内 12–16px",
+    "density": "中低，正文高可读",
+    "responsive_rules": [
+      "320px 可纵向滚动且不横向溢出",
+      "平板展示两列设计画面",
+      "桌面展示三列设计画面",
+      "正文和按钮支持换行",
+      "底部按钮尊重安全区与键盘"
+    ]
+  },
+  "visual_language": {
+    "composition_rules": [
+      "列表和留白优先",
+      "主操作固定在可见底部",
+      "录音页移除主导航避免误触"
+    ],
+    "imagery_rules": [
+      "不使用无关插画、头像和装饰照片"
+    ],
+    "iconography_rules": [
+      "统一 24px 线性 SVG 图标",
+      "实现 Flutter 时优先 Cupertino 图标",
+      "图标按钮有中文无障碍标签"
+    ],
+    "data_visualization_rules": [
+      "进度条附数值",
+      "日历附任务说明",
+      "不用仪表盘或装饰性大环"
+    ],
+    "motion_rules": [
+      "减少动态可正常使用全部核心功能"
+    ],
+    "anti_patterns": [
+      "深色整屏背景",
+      "霓虹",
+      "玻璃叠层",
+      "假录音结果伪装成真实识别"
+    ]
+  },
+  "accessibility": {
+    "contrast_policy": "正文和关键说明至少 4.5:1；大字至少 3:1",
+    "keyboard_policy": "原型按钮和输入可键盘操作；本机使用语义控件",
+    "focus_policy": "可见蓝色焦点轮廓；页面切换重置滚动",
+    "reduced_motion_policy": "禁用循环装饰动画；录音状态提供静态文字"
+  },
+  "governance": {
+    "token_policy": "颜色、字级、间距引用 tokens.css 与 Flutter 主题映射",
+    "component_policy": "相同按钮、列表、顶栏、底部导航共享组件",
+    "when_to_add_new_tokens": "现有语义无法表达并且至少两处需要时",
+    "when_to_add_new_components": "结构或交互角色变化时"
+  },
+  "open_questions": [
+    "正式产品名暂用背诵计划",
+    "最低 iOS 版本待设备确认",
+    "语音是否必须全离线",
+    "评分阈值需中文真实录音校准"
+  ]
+}

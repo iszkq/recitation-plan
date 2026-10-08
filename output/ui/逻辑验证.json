@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-08",
+  "scope": "仅设计原型，非真实语音评测",
+  "results": [
+    {
+      "name": "标点与空白不会产生错误",
+      "passed": true
+    },
+    {
+      "name": "漏字不会导致后续字符全部错位",
+      "passed": true
+    },
+    {
+      "name": "多说会扣内容一致率",
+      "passed": true
+    },
+    {
+      "name": "没有背出的内容不能被原文补齐",
+      "passed": true
+    },
+    {
+      "name": "达标样例和界面数值一致",
+      "passed": true
+    },
+    {
+      "name": "正常化保留原文字而不改字",
+      "passed": true
+    },
+    {
+      "name": "截止日包含当天且12节需要12个新背日",
+      "passed": true
+    },
+    {
+      "name": "周末学习按实际日历分配",
+      "passed": true
+    },
+    {
+      "name": "日期倒置、无学习日、未选文章不能创建",
+      "passed": true
+    },
+    {
+      "name": "正文、辅助说明和主按钮文字符合4.5:1对比度",
+      "passed": true
+    }
+  ]
+}

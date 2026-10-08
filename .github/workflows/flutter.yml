@@ -1,0 +1,56 @@
+name: Flutter checks and iOS build
+on:
+  push:
+    paths: ['product/**', '.github/workflows/flutter.yml']
+  pull_request:
+    paths: ['product/**', '.github/workflows/flutter.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: flutter-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: stable
+          cache: true
+      - run: dart pub get && dart analyze && dart test
+        working-directory: product/core
+      - run: flutter pub get && flutter analyze && flutter test
+        working-directory: product/app
+  ios-unsigned:
+    needs: checks
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: product/app
+      - run: flutter build ios --release --no-codesign
+        working-directory: product/app
+      - name: Package unsigned IPA
+        working-directory: product/app
+        run: |
+          mkdir -p build/unsigned-ipa/Payload
+          ditto build/ios/iphoneos/Runner.app build/unsigned-ipa/Payload/Runner.app
+          cd build/unsigned-ipa
+          zip -qry ../recitation-plan-unsigned.ipa Payload
+          unzip -t ../recitation-plan-unsigned.ipa
+          shasum -a 256 ../recitation-plan-unsigned.ipa > ../recitation-plan-unsigned.ipa.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-unsigned-ipa
+          path: |
+            product/app/build/recitation-plan-unsigned.ipa
+            product/app/build/recitation-plan-unsigned.ipa.sha256
+          if-no-files-found: error

@@ -1,0 +1,10 @@
+:root {
+  --bg:#fff; --grouped:#f2f2f7; --surface:#fff; --text:#1c1c1e; --secondary:#636366; --line:#e5e5ea;
+  --accent:#0066cc; --accent-soft:#eef5ff; --success:#187a48; --success-soft:#edf8f1;
+  --warning:#8b5700; --warning-soft:#fff6e6; --error:#b42318; --error-soft:#fff0ee;
+  --font:system-ui,-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  --display:32px; --heading:22px; --body:17px; --reading:20px; --label:15px; --caption:13px;
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px; --s8:32px; --s10:40px;
+  --inset:24px; --section-gap:24px; --input-radius:10px; --panel-radius:16px; --sheet-radius:24px;
+  --touch:44px; --primary-height:52px; --feedback:120ms; --transition:200ms;
+}

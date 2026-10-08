@@ -1,0 +1,16 @@
+name: recitation_core
+description: 背诵计划的本机优先领域核心层
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  meta: ^1.12.0
+  hive_ce: ^2.11.3
+  crypto: ^3.0.6
+  timezone: ^0.11.0
+
+dev_dependencies:
+  test: ^1.25.0

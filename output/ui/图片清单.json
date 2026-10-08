@@ -1,0 +1,147 @@
+[
+  {
+    "file": "01-今日.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "02-文库.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "03-导入文字.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "04-确认分段.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "05-新建计划.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "06-计划详情.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "07-阅读练习.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "08-语音考核.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "09-达标校对.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "10-识别待确认.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "11-我的.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "12-考核规则.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "13-未达标校对.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "14-文库空状态.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "15-文字考核.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "16-录音不可用.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "17-账户与数据.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "18-备份与同步.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "19-登录账户.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "20-学习周报.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "21-学习月报.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "22-学习年报.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "file": "功能逻辑图.png",
+    "width": 1320,
+    "height": 940
+  },
+  {
+    "file": "学习报告.png",
+    "width": 1320,
+    "height": 1112
+  },
+  {
+    "file": "核心界面.png",
+    "width": 1320,
+    "height": 1112
+  },
+  {
+    "file": "界面图-内容与计划.png",
+    "width": 1320,
+    "height": 2024
+  },
+  {
+    "file": "界面图-异常与替代路径.png",
+    "width": 920,
+    "height": 2024
+  },
+  {
+    "file": "界面图-背诵与校对.png",
+    "width": 1320,
+    "height": 2024
+  },
+  {
+    "file": "界面图-账户与报告.png",
+    "width": 1320,
+    "height": 2024
+  }
+]

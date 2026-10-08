@@ -1,0 +1,23 @@
+name: recitation_app
+description: 本机优先的文章背诵与学习计划
+publish_to: none
+version: 0.1.0+1
+environment:
+  sdk: '>=3.13.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  recitation_core:
+    path: ../core
+  cupertino_icons: ^1.0.8
+  path_provider: ^2.1.5
+  file_selector: ^1.0.3
+  share_plus: ^13.0.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+flutter:
+  uses-material-design: false

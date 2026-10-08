@@ -1,0 +1,29 @@
+# 背诵计划
+
+本机优先的文章背诵应用，采用纯白、简洁的系统 iOS 风格。包含 Flutter App、Dart 核心层和界面设计原型。
+
+- [功能与流程设计](docs/功能与流程设计.md)
+- [底座审查与开发建议](docs/底座审查与开发建议.md)
+- [设计系统](docs/design-system/design-system.md)
+- [可点击界面原型](ui/index.html)
+- [正式产品实施计划](product/IMPLEMENTATION_PLAN.md)
+- [正式产品核心层](product/core/)
+- [Flutter App](product/app/)
+- [GitHub 构建与安装](docs/GitHub构建与安装.md)
+- [关键页面展示板](ui/index.html?mode=gallery)
+- `output/ui/`：导出的界面图与展示板
+- `vendor/remember-me/`：已拉取的上游源码，保留MIT许可
+
+`product/app` 已连接 `product/core` 和 Hive 本机存储。可导入文本、调整分段、创建计划、阅读原文、进行无提示文字考核、生成复习任务、查看周/月/年报告及导出/恢复学习档案。系统文件选择和分享需要设备验证；iOS Speech、账户和云同步尚未实现。
+
+Dart SDK 已安装在工作区 `.tools/dart-sdk`，无需修改全局 PATH。复验运行 `scripts/check-core.ps1`；真实本机闭环结果见 `output/local-verification/verification.json`。
+
+Flutter 工具链位于 `.tools/flutter`。GitHub Actions 已配置核心测试、App 检查及 macOS 未签名 iOS 构建；工作流尚未在 GitHub 运行。Windows 本地不能验证 iOS 编译和签名，未签名产物不能直接安装到 iPhone。
+
+计划已支持多篇文章和暂停/继续，分段保存保留确认后的边界，恢复到前台和跨日自动刷新任务。未到日期的任务不能提前考核通过。仓库：https://github.com/iszkq/recitation-plan 。Actions 成功后产出需自行签名的 `recitation-plan-unsigned.ipa`。
+
+预览方式：在当前目录启动本地静态服务器，然后打开 `/ui/index.html`。无外部前端依赖，无网络字体。也可直接打开 HTML 使用原型功能。
+
+包含22个页面，覆盖内容、计划、考核、账户与周/月/年报告。账户登录、备份和报告数据也为设计演示。
+
+原型中的语音结果为明确标注的模拟演示；不采集录音、不上传文件，不表示已经实现正式应用。
