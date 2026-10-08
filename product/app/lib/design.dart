@@ -9,17 +9,28 @@ abstract final class Design {
   static const ink = Color(0xFF1C1C1E);
   static const secondary = Color(0xFF636366);
   static const success = Color(0xFF187A48);
+  static const successSoft = Color(0xFFEDF8F1);
   static const error = Color(0xFFB42318);
+  static const errorSoft = Color(0xFFFFF0EE);
   static const inset = 24.0;
   static const gap = 16.0;
   static const sectionGap = 24.0;
   static const reading = TextStyle(fontSize: 20, height: 1.8);
   static const caption = TextStyle(fontSize: 14, color: secondary, height: 1.6);
   static const heading = TextStyle(fontSize: 22, fontWeight: FontWeight.w600);
+  static const display = TextStyle(
+    fontSize: 32,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.6,
+  );
+  static const panelRadius = 16.0;
+  static const chartHeight = 96.0;
+  static const chartColumnWidth = 54.0;
+  static const chartBarWidth = 22.0;
   static const theme = CupertinoThemeData(
     brightness: Brightness.light,
     primaryColor: accent,
-    scaffoldBackgroundColor: grouped,
+    scaffoldBackgroundColor: panel,
     textTheme: CupertinoTextThemeData(
       primaryColor: accent,
       textStyle: TextStyle(
@@ -66,18 +77,23 @@ class DetailRow extends StatelessWidget {
     this.icon = CupertinoIcons.doc_text,
     this.onTap,
     this.done = false,
+    this.inset = true,
   });
   final String title;
   final String subtitle;
   final IconData icon;
   final VoidCallback? onTap;
   final bool done;
+  final bool inset;
   @override
   Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.symmetric(horizontal: Design.inset, vertical: 6),
+    margin: EdgeInsets.symmetric(
+      horizontal: inset ? Design.inset : 0,
+      vertical: 6,
+    ),
     decoration: BoxDecoration(
       color: Design.panel,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(Design.panelRadius),
       border: Border.all(color: Design.line),
     ),
     child: CupertinoListTile(
@@ -86,7 +102,7 @@ class DetailRow extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: done ? const Color(0xFFEDF8F1) : Design.accentSoft,
+          color: done ? Design.successSoft : Design.accentSoft,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(
@@ -120,7 +136,7 @@ class CardSection extends StatelessWidget {
     padding: padding,
     decoration: BoxDecoration(
       color: Design.panel,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(Design.panelRadius),
       border: Border.all(color: Design.line),
     ),
     child: child,

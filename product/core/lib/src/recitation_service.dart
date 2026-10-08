@@ -126,7 +126,25 @@ class RecitationService {
     final current = await store.getPlan(plan.id);
     if (current == null) throw StateError('计划不存在');
     if (plan.name.trim().isEmpty) throw ArgumentError('计划名称不能为空');
-    await store.savePlan(plan);
+    if (plan.rule.accuracyThreshold < 0 ||
+        plan.rule.accuracyThreshold > 100 ||
+        plan.rule.coverageThreshold < 0 ||
+        plan.rule.coverageThreshold > 100) {
+      throw ArgumentError('考核阈值必须在0至100之间');
+    }
+    // Settings edits must not silently detach existing tasks from their schedule.
+    await store.savePlan(Plan(
+      id: current.id,
+      name: plan.name.trim(),
+      segmentIds: current.segmentIds,
+      startDate: current.startDate,
+      endDate: current.endDate,
+      dailyNewQuota: current.dailyNewQuota,
+      weekdays: current.weekdays,
+      rule: plan.rule,
+      timeZone: current.timeZone,
+      paused: current.paused,
+    ));
   }
 
   Future<void> deletePlan(String planId) async {
@@ -152,9 +170,9 @@ class RecitationService {
       id: versionId,
       articleId: article.id,
       version:
-          ((await store.getArticleVersion(article.currentVersionId))?.version ??
-              0) +
-          1,
+          ((await store.getArticleVersion(current.currentVersionId))?.version ??
+                  0) +
+              1,
       segments: buildSegments(versionId: versionId, texts: segments),
       createdAt: now,
       changeNote: '编辑文章',
@@ -164,7 +182,7 @@ class RecitationService {
       title: title.trim(),
       author: author?.trim().isEmpty == true ? null : author?.trim(),
       currentVersionId: versionId,
-      createdAt: article.createdAt,
+      createdAt: current.createdAt,
       updatedAt: now,
     );
     await store
@@ -175,11 +193,17 @@ class RecitationService {
   Future<void> deleteArticle(String articleId) async {
     final article = await store.getArticle(articleId);
     if (article == null) throw StateError('文章不存在');
-    final version = await store.getArticleVersion(article.currentVersionId);
-    final ids = version?.segments.map((s) => s.id).toSet() ?? <String>{};
     final plans = await store.plans();
-    if (plans.any((p) => p.segmentIds.any(ids.contains))) {
-      throw StateError('这篇文章已加入学习计划，请先删除相关计划');
+    for (final plan in plans) {
+      for (final id in plan.segmentIds) {
+        final segment = await store.getSegment(id);
+        final version = segment == null
+            ? null
+            : await store.getArticleVersion(segment.versionId);
+        if (version?.articleId == articleId) {
+          throw StateError('这篇文章已加入学习计划，请先删除相关计划');
+        }
+      }
     }
     await store.deleteArticle(articleId);
   }

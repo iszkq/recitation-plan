@@ -6,5 +6,6 @@
   --display:32px; --heading:22px; --body:17px; --reading:20px; --label:15px; --caption:13px;
   --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px; --s8:32px; --s10:40px;
   --inset:24px; --section-gap:24px; --input-radius:10px; --panel-radius:16px; --sheet-radius:24px;
+  --chart-height:96px; --chart-column-width:54px; --chart-bar-width:22px;
   --touch:44px; --primary-height:52px; --feedback:120ms; --transition:200ms;
 }

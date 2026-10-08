@@ -14,7 +14,7 @@
 - `output/ui/`：导出的界面图与展示板
 - `vendor/remember-me/`：已拉取的上游源码，保留MIT许可
 
-`product/app` 已连接 `product/core` 和 Hive 本机存储。可导入文本、调整分段、创建计划、阅读原文、进行无提示文字考核、生成复习任务、查看周/月/年报告及导出/恢复学习档案。系统文件选择和分享需要设备验证；iOS Speech、账户和云同步尚未实现。
+`product/app` 已连接 `product/core` 和 Hive 本机存储。可导入文本、调整分段、创建计划、阅读原文、进行无提示文字或 iOS 语音考核、生成复习任务、查看周/月/年报告及导出/恢复学习档案。支持文章编辑/删除和计划名称/门槛编辑/删除。iOS Speech 已接入系统中文识别，只按最终转录评分，实时文字不作为提示；真实录音、系统文件选择和分享仍需 iPhone 验证。账户登录、云同步和专业发音评分尚未实现。
 
 Dart SDK 已安装在工作区 `.tools/dart-sdk`，无需修改全局 PATH。复验运行 `scripts/check-core.ps1`；真实本机闭环结果见 `output/local-verification/verification.json`。
 

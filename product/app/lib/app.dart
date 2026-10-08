@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'dart:io';
@@ -213,6 +214,7 @@ class TodayPage extends StatelessWidget {
                     ),
                   for (final task in tasks)
                     DetailRow(
+                      inset: false,
                       title: model.taskTitle(task),
                       subtitle:
                           '${task.kind == TaskKind.newLearning ? '新背' : '复习'} · ${model.segments[task.segmentId]?.text ?? ''}',
@@ -449,6 +451,7 @@ class _SegmentPreviewPageState extends State<SegmentPreviewPage> {
   }
 
   Future<void> save() async {
+    if (busy) return;
     setState(() => busy = true);
     try {
       if (sections.any((c) => normalizeForAssessment(c.text).isEmpty)) {
@@ -544,11 +547,20 @@ class ArticlePage extends StatelessWidget {
   final AppModel model;
   final Article article;
   @override
-  Widget build(BuildContext context) {
-    final version = model.store.getArticleVersion(article.currentVersionId);
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: model,
+    builder: (context, _) => buildDetails(context),
+  );
+
+  Widget buildDetails(BuildContext context) {
+    final current = model.articles.firstWhere(
+      (a) => a.id == article.id,
+      orElse: () => article,
+    );
+    final version = model.store.getArticleVersion(current.currentVersionId);
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
-        middle: Text(article.title),
+        middle: Text(current.title),
         trailing: CupertinoButton(
           padding: EdgeInsets.zero,
           child: const Icon(CupertinoIcons.ellipsis_circle),
@@ -579,7 +591,7 @@ class ArticlePage extends StatelessWidget {
               await Navigator.of(context, rootNavigator: true).push(
                 CupertinoPageRoute(
                   builder: (_) =>
-                      ArticleEditPage(model: model, article: article),
+                      ArticleEditPage(model: model, article: current),
                 ),
               );
               return;
@@ -616,7 +628,7 @@ class ArticlePage extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.all(Design.inset),
                   child: Text(
-                    '${segments.length} 节 · ${article.author ?? '未填写作者'}',
+                    '${segments.length} 节 · ${current.author ?? '未填写作者'}',
                     style: Design.caption,
                   ),
                 ),
@@ -630,7 +642,7 @@ class ArticlePage extends StatelessWidget {
                           CupertinoPageRoute(
                             builder: (_) => SegmentReadingPage(
                               title:
-                                  '${article.title} · 第${segment.order + 1}节',
+                                  '${current.title} · 第${segment.order + 1}节',
                               text: segment.text,
                             ),
                           ),
@@ -644,7 +656,7 @@ class ArticlePage extends StatelessWidget {
                         Navigator.of(context, rootNavigator: true).push(
                           CupertinoPageRoute(
                             builder: (_) =>
-                                PlanCreatePage(model: model, article: article),
+                                PlanCreatePage(model: model, article: current),
                           ),
                         ),
                   ),
@@ -1083,6 +1095,7 @@ class _PlanEditPageState extends State<PlanEditPage> {
   }
 
   Future<void> save() async {
+    if (busy) return;
     setState(() => busy = true);
     try {
       await widget.model.service.updatePlan(
@@ -1099,6 +1112,8 @@ class _PlanEditPageState extends State<PlanEditPage> {
           rule: AssessmentRule(
             accuracyThreshold: accuracy.round(),
             coverageThreshold: coverage.round(),
+            requireKeywords: widget.plan.rule.requireKeywords,
+            ignorePunctuation: widget.plan.rule.ignorePunctuation,
           ),
         ),
       );
@@ -1295,6 +1310,7 @@ class _PlanCreatePageState extends State<PlanCreatePage> {
   }
 
   Future<void> create() async {
+    if (busy) return;
     setState(() => busy = true);
     try {
       await widget.model.service.createPlan(
@@ -1378,6 +1394,7 @@ class _PlanCreatePageState extends State<PlanCreatePage> {
           ),
           const SizedBox(height: 16),
           DetailRow(
+            inset: false,
             title: '计划文章 · ${selectedIds.length}篇',
             subtitle: selectedArticles.map((a) => a.title).join('、'),
             icon: CupertinoIcons.book,
@@ -1402,66 +1419,112 @@ class _PlanCreatePageState extends State<PlanCreatePage> {
                   },
           ),
           DetailRow(
+            inset: false,
             title: '开始日期',
             subtitle: dateLabel(start),
             icon: CupertinoIcons.calendar,
             onTap: () => chooseDate(true),
           ),
           DetailRow(
+            inset: false,
             title: '截止日期',
             subtitle: dateLabel(end),
             icon: CupertinoIcons.calendar,
             onTap: () => chooseDate(false),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('每天新背'),
-              const SizedBox(height: Design.gap),
-              CupertinoSegmentedControl<int>(
-                groupValue: quota,
-                children: const {1: Text('1节'), 2: Text('2节'), 3: Text('3节')},
-                onValueChanged: (v) => setState(() => quota = v),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          const Text('学习日'),
-          Wrap(
-            spacing: 4,
-            children: [
-              for (var day = 1; day <= 7; day++)
-                CupertinoButton(
-                  padding: const EdgeInsets.all(10),
-                  onPressed: () => setState(() {
-                    if (!weekdays.add(day)) weekdays.remove(day);
-                  }),
-                  child: Text(
-                    '${weekdays.contains(day) ? '✓ ' : ''}${['一', '二', '三', '四', '五', '六', '日'][day - 1]}',
-                  ),
+          const SizedBox(height: 16),
+          CardSection(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('每天新背'),
+                const SizedBox(height: Design.gap),
+                CupertinoSegmentedControl<int>(
+                  groupValue: quota,
+                  children: const {
+                    1: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      child: Text('1节'),
+                    ),
+                    2: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      child: Text('2节'),
+                    ),
+                    3: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      child: Text('3节'),
+                    ),
+                  },
+                  onValueChanged: (v) => setState(() => quota = v),
                 ),
-            ],
+                const SizedBox(height: 20),
+                const Text('学习日'),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (var day = 1; day <= 7; day++)
+                      Semantics(
+                        label:
+                            '星期${['一', '二', '三', '四', '五', '六', '日'][day - 1]}',
+                        selected: weekdays.contains(day),
+                        child: CupertinoButton(
+                          color: weekdays.contains(day)
+                              ? Design.accentSoft
+                              : Design.grouped,
+                          borderRadius: BorderRadius.circular(8),
+                          padding: const EdgeInsets.all(12),
+                          onPressed: busy
+                              ? null
+                              : () => setState(() {
+                                  if (!weekdays.add(day)) weekdays.remove(day);
+                                }),
+                          child: Text(
+                            ['一', '二', '三', '四', '五', '六', '日'][day - 1],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 24),
-          Text('通过标准：一致率 $accuracy%'),
-          CupertinoSlider(
-            value: accuracy.toDouble(),
-            min: 80,
-            max: 100,
-            divisions: 20,
-            onChanged: busy
-                ? null
-                : (v) => setState(() => accuracy = v.round()),
-          ),
-          Text('原文覆盖率 $coverage%'),
-          CupertinoSlider(
-            value: coverage.toDouble(),
-            min: 80,
-            max: 100,
-            divisions: 20,
-            onChanged: busy
-                ? null
-                : (v) => setState(() => coverage = v.round()),
+          const SizedBox(height: 16),
+          CardSection(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('通过标准：一致率 $accuracy%'),
+                CupertinoSlider(
+                  value: accuracy.toDouble(),
+                  min: 80,
+                  max: 100,
+                  divisions: 20,
+                  onChanged: busy
+                      ? null
+                      : (v) => setState(() => accuracy = v.round()),
+                ),
+                Text('原文覆盖率 $coverage%'),
+                CupertinoSlider(
+                  value: coverage.toDouble(),
+                  min: 80,
+                  max: 100,
+                  divisions: 20,
+                  onChanged: busy
+                      ? null
+                      : (v) => setState(() => coverage = v.round()),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: Design.gap),
           Text(
@@ -1490,20 +1553,26 @@ class SpeechAssessmentPage extends StatefulWidget {
     super.key,
     required this.model,
     required this.task,
+    this.speechProvider,
   });
   final AppModel model;
   final Task task;
+  final SpeechProvider? speechProvider;
   @override
   State<SpeechAssessmentPage> createState() => _SpeechAssessmentPageState();
 }
 
 class _SpeechAssessmentPageState extends State<SpeechAssessmentPage> {
-  late final IosSpeechProvider provider;
+  late final SpeechProvider provider;
   StreamSubscription<SpeechUpdate>? subscription;
+  Timer? ticker;
   SpeechState state = SpeechState.idle;
   String transcript = '';
   String? error;
   bool busy = false;
+  bool leaving = false;
+  bool hasSession = false;
+  bool interruptionRecorded = false;
   Attempt? result;
   late String attemptId;
   final active = Stopwatch();
@@ -1511,62 +1580,131 @@ class _SpeechAssessmentPageState extends State<SpeechAssessmentPage> {
   @override
   void initState() {
     super.initState();
-    provider = IosSpeechProvider();
+    provider = widget.speechProvider ?? IosSpeechProvider();
     attemptId = createLocalId();
     subscription = provider.updates.listen((update) {
-      if (!mounted) return;
+      if (!mounted || leaving || result != null) return;
+      if (update.state == SpeechState.ready && update.finalText != null) {
+        if (!busy) unawaited(finish(finalText: update.finalText));
+        return;
+      }
       setState(() {
-        state = update.state;
-        transcript = update.finalText ?? update.interimText;
+        state = busy ? SpeechState.finalizing : update.state;
         error = update.error;
       });
+      if (update.state == SpeechState.failed ||
+          update.state == SpeechState.unavailable) {
+        active.stop();
+        unawaited(recordInterruption());
+      }
     });
+    ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && active.isRunning) setState(() {});
+    });
+  }
+
+  Future<void> closeProvider() async {
+    await subscription?.cancel();
+    try {
+      await provider.cancel();
+    } catch (_) {
+      // A missing platform bridge must not cause an unhandled disposal error.
+    }
+    if (provider is IosSpeechProvider) {
+      await (provider as IosSpeechProvider).dispose();
+    }
   }
 
   @override
   void dispose() {
-    subscription?.cancel();
-    provider.cancel();
-    provider.dispose();
+    leaving = true;
+    ticker?.cancel();
     active.stop();
+    unawaited(closeProvider());
     super.dispose();
   }
 
-  Future<void> start() async {
-    setState(() {
-      error = null;
-      state = SpeechState.idle;
-      transcript = '';
-    });
-    if (!await provider.requestPermission()) {
-      setState(() {
-        state = SpeechState.unavailable;
-        error = '需要麦克风和语音识别权限，请在系统设置中允许后重试';
-      });
-      return;
-    }
+  Future<void> recordInterruption() async {
+    if (!hasSession || result != null || interruptionRecorded) return;
+    interruptionRecorded = true;
     try {
-      await provider.start(locale: 'zh-CN');
-      active.start();
+      await widget.model.service.submitFinalTranscript(
+        taskId: widget.task.id,
+        attemptId: attemptId,
+        transcript: '',
+        isFinal: true,
+        technicalFailure: true,
+        activeSeconds: active.elapsed.inSeconds,
+      );
+      await widget.model.reload();
     } catch (e) {
-      setState(() {
-        state = SpeechState.failed;
-        error = '$e';
-      });
+      if (mounted && !leaving) {
+        setState(() => error = '录音已停止，记录未保存，请重试');
+      }
     }
   }
 
-  Future<void> finish() async {
-    if (state != SpeechState.recording) return;
+  Future<void> start() async {
+    if (busy) return;
+    setState(() {
+      busy = true;
+      error = null;
+      state = SpeechState.idle;
+      transcript = '';
+      attemptId = createLocalId();
+      hasSession = false;
+      interruptionRecorded = false;
+      active.reset();
+    });
+    try {
+      if (!await provider.requestPermission()) {
+        if (mounted && !leaving) {
+          setState(() {
+            state = SpeechState.unavailable;
+            error = '需要麦克风和语音识别权限，请在系统设置中允许后重试';
+          });
+        }
+        return;
+      }
+      if (!mounted || leaving) return;
+      await provider.start(locale: 'zh-CN');
+      if (!mounted || leaving) {
+        await provider.cancel();
+        return;
+      }
+      hasSession = true;
+      active.start();
+      setState(() => state = SpeechState.recording);
+    } catch (e) {
+      if (mounted && !leaving) {
+        setState(() {
+          state = SpeechState.failed;
+          error = e is PlatformException
+              ? e.message ?? '录音启动失败，请重试'
+              : '此设备暂时无法启动语音识别，请重试或使用文字考核';
+        });
+      }
+    } finally {
+      if (mounted && !leaving) setState(() => busy = false);
+    }
+  }
+
+  Future<void> finish({String? finalText}) async {
+    if (busy ||
+        leaving ||
+        result != null ||
+        (finalText == null && state != SpeechState.recording)) {
+      return;
+    }
     active.stop();
     setState(() {
       state = SpeechState.finalizing;
       busy = true;
     });
     try {
-      final update = await provider.stopAndFinalize();
-      final text = update.finalText ?? transcript;
-      if (normalizeForAssessment(text).isEmpty) {
+      final text = finalText ?? (await provider.stopAndFinalize()).finalText;
+      if (!mounted || leaving) return;
+      if (text == null || normalizeForAssessment(text).isEmpty) {
         throw StateError('没有识别到有效内容，请重新背诵');
       }
       final attempt = await widget.model.service.submitFinalTranscript(
@@ -1577,7 +1715,7 @@ class _SpeechAssessmentPageState extends State<SpeechAssessmentPage> {
         activeSeconds: active.elapsed.inSeconds,
       );
       await widget.model.reload();
-      if (mounted) {
+      if (mounted && !leaving) {
         setState(() {
           result = attempt;
           state = SpeechState.ready;
@@ -1585,25 +1723,55 @@ class _SpeechAssessmentPageState extends State<SpeechAssessmentPage> {
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && !leaving) {
         setState(() {
           state = SpeechState.failed;
-          error = e is StateError ? e.message : '识别或校对失败，请重试';
+          error = e is StateError
+              ? e.message
+              : e is PlatformException
+              ? e.message ?? '识别中断，请重试'
+              : '识别或校对失败，请重试';
         });
+        await recordInterruption();
       }
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted && !leaving) setState(() => busy = false);
     }
   }
 
   void retry() {
+    active.reset();
     setState(() {
       result = null;
-      attemptId = createLocalId();
       transcript = '';
       error = null;
       state = SpeechState.idle;
+      hasSession = false;
     });
+  }
+
+  Future<void> exit() async {
+    if (leaving || busy) return;
+    if (hasSession && result == null && state == SpeechState.recording) {
+      if (!await confirm(
+        context,
+        '结束本次考核？',
+        '录音将停止，本次记为中断，任务仍需完成。',
+        action: '结束考核',
+      )) {
+        return;
+      }
+    }
+    if (!mounted) return;
+    leaving = true;
+    active.stop();
+    try {
+      await provider.cancel();
+    } catch (_) {}
+    await recordInterruption();
+    if (!mounted) return;
+    setState(() {});
+    Navigator.pop(context);
   }
 
   @override
@@ -1611,125 +1779,130 @@ class _SpeechAssessmentPageState extends State<SpeechAssessmentPage> {
     final score = result?.score;
     final recording = state == SpeechState.recording;
     final finalizing = state == SpeechState.finalizing || busy;
-    return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar(middle: Text('语音考核')),
-      child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(Design.inset),
-          children: [
-            Text(widget.model.taskTitle(widget.task), style: Design.heading),
-            const SizedBox(height: 8),
-            Text(
-              recording ? '请自然背诵，结束后系统会用最终转录和原文校对。' : '原文已隐藏，准备好后开始录音。',
-              style: Design.caption,
-            ),
-            const SizedBox(height: 22),
-            CardSection(
-              child: Column(
-                children: [
-                  Icon(
-                    recording ? CupertinoIcons.mic_fill : CupertinoIcons.mic,
-                    size: 46,
-                    color: recording ? Design.error : Design.accent,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    finalizing
-                        ? '正在生成最终结果'
-                        : recording
-                        ? '正在聆听'
-                        : state == SpeechState.ready
-                        ? '已完成校对'
-                        : '等待开始',
-                    style: const TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ProgressBar(
-                    value: recording
-                        ? .55
-                        : finalizing
-                        ? .8
-                        : result == null
-                        ? 0
-                        : 1,
-                    color: recording ? Design.error : Design.accent,
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    transcript.isEmpty ? '实时转录仅用于显示进度，最终结果才参与考核。' : transcript,
-                    style: Design.caption,
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+    final elapsed = active.elapsed;
+    final duration =
+        '${elapsed.inMinutes.toString().padLeft(2, '0')}:${(elapsed.inSeconds % 60).toString().padLeft(2, '0')}';
+    return PopScope(
+      canPop: leaving || (!hasSession && !busy) || result != null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && !busy) unawaited(exit());
+      },
+      child: CupertinoPageScaffold(
+        navigationBar: CupertinoNavigationBar(
+          middle: const Text('语音考核'),
+          leading: CupertinoButton(
+            padding: EdgeInsets.zero,
+            onPressed: busy ? null : exit,
+            child: const Text('返回'),
+          ),
+        ),
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(Design.inset),
+            children: [
+              Text(widget.model.taskTitle(widget.task), style: Design.heading),
+              const SizedBox(height: 8),
+              Text(
+                recording ? '请自然背诵，结束后与原文校对。' : '原文和实时转录已隐藏，准备好后开始录音。',
+                style: Design.caption,
               ),
-            ),
-            if (error != null) ...[
-              const SizedBox(height: 12),
-              CardSection(
-                child: Row(
-                  children: [
-                    const Icon(
-                      CupertinoIcons.exclamationmark_triangle,
-                      color: Design.error,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        error!,
-                        style: const TextStyle(color: Design.error),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            if (result != null && score != null) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 22),
               CardSection(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    StatusChip(
-                      result!.status == AttemptStatus.passed
-                          ? '考核通过'
-                          : result!.status == AttemptStatus.needsReview
-                          ? '识别待确认'
-                          : '仍需练习',
-                      color: result!.status == AttemptStatus.passed
-                          ? Design.success
-                          : Design.error,
-                      background: result!.status == AttemptStatus.passed
-                          ? const Color(0xFFEDF8F1)
-                          : const Color(0xFFFFF0EE),
+                    Icon(
+                      recording ? CupertinoIcons.mic_fill : CupertinoIcons.mic,
+                      size: 46,
+                      color: recording ? Design.error : Design.accent,
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      '${score.accuracy.toStringAsFixed(1)}%',
-                      style: const TextStyle(
-                        fontSize: 36,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      finalizing
+                          ? '正在处理，请稍候'
+                          : recording
+                          ? '正在聆听'
+                          : result != null
+                          ? '已完成校对'
+                          : '等待开始',
+                      style: Design.heading,
                     ),
-                    Text(
-                      '内容一致率 · 原文覆盖率 ${score.coverage.toStringAsFixed(1)}%',
+                    const SizedBox(height: 12),
+                    if (finalizing)
+                      const CupertinoActivityIndicator()
+                    else
+                      Text(duration, style: Design.display),
+                    const SizedBox(height: 12),
+                    const Text(
+                      '语音识别由 iOS 系统提供，可能需要联网。录音不保存。',
                       style: Design.caption,
+                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),
               ),
+              if (error != null) ...[
+                const SizedBox(height: 12),
+                CardSection(
+                  child: Text(
+                    error!,
+                    style: const TextStyle(color: Design.error),
+                  ),
+                ),
+              ],
+              if (result != null && score != null) ...[
+                const SizedBox(height: 16),
+                CardSection(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      StatusChip(
+                        result!.status == AttemptStatus.passed
+                            ? '考核通过'
+                            : result!.status == AttemptStatus.needsReview
+                            ? '识别待确认'
+                            : '仍需练习',
+                        color: result!.status == AttemptStatus.passed
+                            ? Design.success
+                            : Design.error,
+                        background: result!.status == AttemptStatus.passed
+                            ? Design.successSoft
+                            : Design.errorSoft,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        '${score.accuracy.toStringAsFixed(1)}%',
+                        style: Design.display,
+                      ),
+                      Text(
+                        '内容一致率 · 原文覆盖率 ${score.coverage.toStringAsFixed(1)}%',
+                        style: Design.caption,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '漏字 ${score.deleted} · 错字 ${score.substituted} · 多说 ${score.inserted}',
+                        style: Design.caption,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '原文：${widget.model.segments[widget.task.segmentId]?.text ?? ''}',
+                  style: Design.reading,
+                ),
+                const SizedBox(height: 16),
+                Text('你的背诵：$transcript', style: Design.reading),
+              ],
+              if (result == null && !recording && !finalizing)
+                PrimaryAction('开始录音', onPressed: start),
+              if (recording) PrimaryAction('结束并校对', onPressed: finish),
+              if (result != null) PrimaryAction('再次考核', onPressed: retry),
+              CupertinoButton(
+                onPressed: busy ? null : exit,
+                child: const Text('退出考核'),
+              ),
             ],
-            if (result == null && !recording && !finalizing)
-              PrimaryAction('开始录音', onPressed: start),
-            if (recording) PrimaryAction('结束并校对', onPressed: finish),
-            if (result != null) PrimaryAction('再次考核', onPressed: retry),
-            CupertinoButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('退出考核'),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -1781,6 +1954,7 @@ class _TextAssessmentPageState extends State<TextAssessmentPage>
   }
 
   Future<void> submit() async {
+    if (busy) return;
     if (result != null) {
       setState(() {
         result = null;
@@ -1792,7 +1966,7 @@ class _TextAssessmentPageState extends State<TextAssessmentPage>
       return;
     }
     if (normalizeForAssessment(answer.text).isEmpty) {
-      await showError(context, '请先输入有效背诵内容');
+      await showError(context, const FormatException('请先输入有效背诵内容'));
       return;
     }
     setState(() => busy = true);
@@ -1890,23 +2064,59 @@ class ProfilePage extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(Design.inset),
           children: [
-            const Text('本机学习档案', style: Design.heading),
-            const SizedBox(height: 8),
-            const Text('不登录也能完整使用，数据保存在此设备。', style: Design.caption),
-            const SizedBox(height: 28),
-            Text('本周学习', style: Design.heading),
-            const SizedBox(height: 12),
-            Text(
-              report.dueTasks == 0
-                  ? '暂无到期任务'
-                  : '${report.completedTasks} / ${report.dueTasks} 个任务完成',
+            const Text('我的学习', style: Design.display),
+            const SizedBox(height: 16),
+            CardSection(
+              child: Row(
+                children: [
+                  const Icon(
+                    CupertinoIcons.person_crop_circle,
+                    size: 44,
+                    color: Design.accent,
+                  ),
+                  const SizedBox(width: 16),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('本机学习档案', style: Design.heading),
+                        SizedBox(height: 4),
+                        Text('不登录也能使用，数据保存在此设备。', style: Design.caption),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-            Text(
-              '有效学习 ${report.focusMinutes} 分钟 · 学习 ${report.learningDays} 天',
-              style: Design.caption,
+            const SizedBox(height: 16),
+            CardSection(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('本周学习', style: Design.heading),
+                  const SizedBox(height: 12),
+                  Text(
+                    report.dueTasks == 0
+                        ? '暂无到期任务'
+                        : '${report.completedTasks} / ${report.dueTasks} 个任务完成',
+                  ),
+                  const SizedBox(height: 8),
+                  ProgressBar(
+                    value: report.dueTasks == 0
+                        ? 0
+                        : report.completedTasks / report.dueTasks,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '有效学习 ${report.focusMinutes} 分钟 · 学习 ${report.learningDays} 天',
+                    style: Design.caption,
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 20),
             DetailRow(
+              inset: false,
               title: '学习报告',
               subtitle: '周报 · 月报 · 年报',
               icon: CupertinoIcons.chart_bar,
@@ -1915,6 +2125,7 @@ class ProfilePage extends StatelessWidget {
               ),
             ),
             DetailRow(
+              inset: false,
               title: '备份与恢复',
               subtitle: '导出或恢复本机学习档案',
               icon: CupertinoIcons.archivebox,
@@ -2047,8 +2258,135 @@ class _ReportsPageState extends State<ReportsPage> {
                 ],
               ),
             ),
+            const SizedBox(height: Design.gap),
+            ReportActivityChart(model: widget.model, report: r),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class ReportActivityChart extends StatelessWidget {
+  const ReportActivityChart({
+    super.key,
+    required this.model,
+    required this.report,
+  });
+  final AppModel model;
+  final LearningReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    final buckets = <({String label, DateTime start, DateTime end})>[];
+    if (report.period == ReportPeriod.year) {
+      for (var month = 1; month <= 12; month++) {
+        buckets.add((
+          label: '$month月',
+          start: DateTime(report.start.year, month),
+          end: DateTime(report.start.year, month + 1, 0),
+        ));
+      }
+    } else if (report.period == ReportPeriod.month) {
+      for (var day = 1; day <= report.end.day; day += 7) {
+        final end = (day + 6).clamp(1, report.end.day);
+        buckets.add((
+          label: '$day–$end日',
+          start: DateTime(report.start.year, report.start.month, day),
+          end: DateTime(report.start.year, report.start.month, end),
+        ));
+      }
+    } else {
+      for (var i = 0; i < 7; i++) {
+        final date = report.start.add(Duration(days: i));
+        buckets.add((
+          label: ['一', '二', '三', '四', '五', '六', '日'][i],
+          start: date,
+          end: date,
+        ));
+      }
+    }
+    final counts = <int>[];
+    for (final bucket in buckets) {
+      final ids = <String>{};
+      for (final event in model.events) {
+        if (event.type != LearningEventType.taskCompleted ||
+            event.taskId == null) {
+          continue;
+        }
+        final local = eventLocalTime(event);
+        final date = DateTime(local.year, local.month, local.day);
+        if (!date.isBefore(bucket.start) &&
+            !date.isAfter(bucket.end) &&
+            !date.isAfter(model.today)) {
+          ids.add(event.taskId!);
+        }
+      }
+      counts.add(ids.length);
+    }
+    final maximum = counts.fold<int>(
+      1,
+      (old, count) => count > old ? count : old,
+    );
+    return CardSection(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('任务完成趋势', style: Design.heading),
+          const SizedBox(height: 6),
+          const Text('按实际完成日期统计', style: Design.caption),
+          const SizedBox(height: 16),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (var i = 0; i < buckets.length; i++)
+                  Semantics(
+                    label: '${buckets[i].label}，完成 ${counts[i]} 个任务',
+                    excludeSemantics: true,
+                    child: SizedBox(
+                      width: Design.chartColumnWidth,
+                      child: Column(
+                        children: [
+                          Text('${counts[i]}', style: Design.caption),
+                          const SizedBox(height: 6),
+                          SizedBox(
+                            height: Design.chartHeight,
+                            child: Align(
+                              alignment: Alignment.bottomCenter,
+                              child: Container(
+                                width: Design.chartBarWidth,
+                                height: counts[i] == 0
+                                    ? 2
+                                    : Design.chartHeight * counts[i] / maximum,
+                                decoration: BoxDecoration(
+                                  color: counts[i] == 0
+                                      ? Design.line
+                                      : Design.accent,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            buckets[i].label,
+                            style: Design.caption,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.only(top: 12),
+            child: Text('左右滑动查看完整周期', style: Design.caption),
+          ),
+        ],
       ),
     );
   }

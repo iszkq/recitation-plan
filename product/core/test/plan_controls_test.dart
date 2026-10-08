@@ -120,6 +120,10 @@ void main() {
     );
     await expectLater(service.deleteArticle(article.id), throwsStateError);
     expect(await store.getArticle(article.id), isNotNull);
+    // A plan still points to its original version after the article is edited.
+    await service
+        .updateArticle(article: article, title: '修改后', segments: ['新正文。']);
+    await expectLater(service.deleteArticle(article.id), throwsStateError);
   });
 
   test('删除计划保留已完成任务，编辑计划保留任务', () async {
@@ -155,5 +159,70 @@ void main() {
     await service.deletePlan(plan.id);
     expect(await store.getPlan(plan.id), isNull);
     expect((await store.getTask(task.id))!.status, TaskStatus.completed);
+  });
+
+  test('删除计划和文章后历史成绩可导出并完整恢复', () async {
+    final article =
+        await service.importArticle(title: '课文', text: '正文。\n\n第二节。');
+    final plan = await service.createPlan(
+      name: '计划',
+      versionIds: [article.currentVersionId],
+      start: DateTime(2026, 10, 8),
+      end: DateTime(2026, 10, 31),
+      quota: 2,
+      weekdays: {1, 2, 3, 4, 5, 6, 7},
+    );
+    final tasks = await store.tasks();
+    await service.submitFinalTranscript(
+        taskId: tasks.first.id,
+        attemptId: 'passed',
+        transcript: '正文',
+        isFinal: true);
+    await service.submitFinalTranscript(
+        taskId: tasks.last.id,
+        attemptId: 'failed',
+        transcript: '错误内容',
+        isFinal: true);
+    await service.deletePlan(plan.id);
+    await service.deleteArticle(article.id);
+    expect(await store.articles(), isEmpty);
+    expect(await store.plans(), isEmpty);
+    expect((await store.getTask(tasks.first.id))!.status, TaskStatus.completed);
+    expect((await store.getTask(tasks.last.id))!.status, TaskStatus.skipped);
+    expect((await store.getAttempt('failed'))!.status, AttemptStatus.failed);
+    final restored = MemoryRecitationStore();
+    await BackupService(restored, profileId: 'restored').restore(
+      BackupService(store, profileId: 'local').export(),
+      saveCurrentArchive: (_) async {},
+    );
+    expect(await restored.articles(), isEmpty);
+    expect(await restored.plans(), isEmpty);
+    expect((await restored.getSegment(tasks.first.segmentId))!.text, '正文。');
+    expect((await restored.getAttempt('passed'))!.status, AttemptStatus.passed);
+    expect((await restored.getAttempt('failed'))!.status, AttemptStatus.failed);
+    expect(await restored.events(), hasLength((await store.events()).length));
+  });
+
+  test('重复编辑使用最新版本号，既有计划始终考核原版本', () async {
+    final article = await service.importArticle(title: '原文', text: '原始内容。');
+    await service.createPlan(
+        name: '计划',
+        versionIds: [article.currentVersionId],
+        start: DateTime(2026, 10, 8),
+        end: DateTime(2026, 10, 31),
+        quota: 1,
+        weekdays: {1, 2, 3, 4, 5, 6, 7});
+    await service
+        .updateArticle(article: article, title: '第二版', segments: ['修改内容。']);
+    final third = await service
+        .updateArticle(article: article, title: '第三版', segments: ['再修改内容。']);
+    expect((await store.getArticleVersion(third.currentVersionId))!.version, 3);
+    final task = (await store.tasks()).single;
+    final result = await service.submitFinalTranscript(
+        taskId: task.id,
+        attemptId: 'original',
+        transcript: '原始内容',
+        isFinal: true);
+    expect(result.status, AttemptStatus.passed);
   });
 }

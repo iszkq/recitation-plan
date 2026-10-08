@@ -92,12 +92,18 @@ class MemoryRecitationStore implements RecitationStore {
 
   @override
   Future<List<Article>> articles() async =>
-      _all('articles', EntityCodec.readArticle);
+      _all('articles', EntityCodec.readArticle)
+          .where((a) => !a.deleted)
+          .toList();
   @override
-  Future<List<Plan>> plans() async => _all('plans', EntityCodec.readPlan);
+  Future<List<Plan>> plans() async =>
+      _all('plans', EntityCodec.readPlan).where((p) => !p.deleted).toList();
   @override
-  Future<Plan?> getPlan(String id) async =>
-      _get('plans', id, EntityCodec.readPlan);
+  Future<Plan?> getPlan(String id) async {
+    final plan = _get('plans', id, EntityCodec.readPlan);
+    return plan?.deleted == true ? null : plan;
+  }
+
   @override
   Future<Segment?> getSegment(String id) async {
     for (final v in _all('versions', EntityCodec.readVersion)) {
@@ -120,8 +126,11 @@ class MemoryRecitationStore implements RecitationStore {
   Future<List<LearningEvent>> events() async =>
       _all('events', EntityCodec.readEvent);
   @override
-  Future<Article?> getArticle(String id) async =>
-      _get('articles', id, EntityCodec.readArticle);
+  Future<Article?> getArticle(String id) async {
+    final article = _get('articles', id, EntityCodec.readArticle);
+    return article?.deleted == true ? null : article;
+  }
+
   @override
   Future<ArticleVersion?> getArticleVersion(String id) async =>
       _get('versions', id, EntityCodec.readVersion);
@@ -139,10 +148,10 @@ class MemoryRecitationStore implements RecitationStore {
   Future<void> deleteArticle(String id) async {
     final operation = _tail.then((_) async {
       final next = _clone(_state);
-      final article = (next['articles'] as Map<String, dynamic>).remove(id);
+      final article = (next['articles'] as Map<String, dynamic>)[id];
       if (article == null) return;
-      final versions = next['versions'] as Map<String, dynamic>;
-      versions.removeWhere((_, value) => value['articleId'] == id);
+      // Keep original versions and identity for historical attempts and backups.
+      article['deleted'] = true;
       await persist(next);
       _state = _clone(next);
     });
@@ -162,11 +171,15 @@ class MemoryRecitationStore implements RecitationStore {
       final next = _clone(_state);
       final plans = next['plans'] as Map<String, dynamic>;
       if (!plans.containsKey(id)) return;
-      plans.remove(id);
+      plans[id]['deleted'] = true;
+      plans[id]['paused'] = true;
       final tasks = next['tasks'] as Map<String, dynamic>;
-      tasks.removeWhere((_, value) =>
-          value['planId'] == id &&
-          value['status'] != TaskStatus.completed.name);
+      for (final value in tasks.values) {
+        if (value['planId'] == id &&
+            value['status'] != TaskStatus.completed.name) {
+          value['status'] = TaskStatus.skipped.name;
+        }
+      }
       await persist(next);
       _state = _clone(next);
     });

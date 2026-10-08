@@ -17,6 +17,7 @@ class Article {
     required this.currentVersionId,
     required this.createdAt,
     required this.updatedAt,
+    this.deleted = false,
   });
 
   final String id;
@@ -25,6 +26,7 @@ class Article {
   final String currentVersionId;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final bool deleted;
 }
 
 @immutable
@@ -78,6 +80,7 @@ class Plan {
     required this.rule,
     required this.timeZone,
     this.paused = false,
+    this.deleted = false,
   });
 
   final String id;
@@ -92,6 +95,7 @@ class Plan {
   final AssessmentRule rule;
   final String timeZone;
   final bool paused;
+  final bool deleted;
 }
 
 @immutable

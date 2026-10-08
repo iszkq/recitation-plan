@@ -12,6 +12,7 @@ class EntityCodec {
         'currentVersionId': a.currentVersionId,
         'createdAt': a.createdAt.toUtc().toIso8601String(),
         'updatedAt': a.updatedAt.toUtc().toIso8601String(),
+        if (a.deleted) 'deleted': true,
       };
   static Article readArticle(JsonObject j) => Article(
         id: j['id'] as String,
@@ -20,6 +21,7 @@ class EntityCodec {
         currentVersionId: j['currentVersionId'] as String,
         createdAt: DateTime.parse(j['createdAt']),
         updatedAt: DateTime.parse(j['updatedAt']),
+        deleted: j['deleted'] as bool? ?? false,
       );
   static JsonObject segment(Segment s) => {
         'id': s.id,
@@ -89,6 +91,7 @@ class EntityCodec {
         'rule': rule(p.rule),
         'timeZone': p.timeZone,
         'paused': p.paused,
+        if (p.deleted) 'deleted': true,
       };
   static Plan readPlan(JsonObject j) => Plan(
         id: j['id'],
@@ -101,6 +104,7 @@ class EntityCodec {
         rule: readRule(Map<String, dynamic>.from(j['rule'])),
         timeZone: j['timeZone'],
         paused: j['paused'],
+        deleted: j['deleted'] as bool? ?? false,
       );
   static JsonObject task(Task t) => {
         'id': t.id,

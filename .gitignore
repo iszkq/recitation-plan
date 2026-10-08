@@ -15,3 +15,9 @@
 **/ios/Flutter/ephemeral/
 **/.idea/
 **/*.iml
+
+# Local delivery and study archives stay on the device.
+output/ios/
+output/local-verification/backup.json
+output/local-verification/*.hive
+output/*.zip
