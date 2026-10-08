@@ -8,7 +8,7 @@
 
 ## 上传源代码
 
-使用 `output/背诵计划-设计交付.zip` 中的源文件，解压后保留 `.github` 目录。也可直接上传工作区中 `.github`、`product`、`docs`、`scripts`、`ui`、根 README/AGENTS/.gitignore。
+最新源码以 GitHub main 分支为准。旧设计交付 ZIP 不代表当前应用版本；复制源文件时保留 .github、product、docs、scripts、ui 和根 README/AGENTS/.gitignore。
 
 不要上传 `.tools`、`.dart_tool`、`build`、本机数据库、录音、证书和缓存。`vendor/remember-me` 只是保留许可的上游参考快照，当前 App 构建不依赖它。
 
@@ -46,4 +46,8 @@
 
 ## 当前版本验证
 
-本次代码版本更新为 0.2.0+2。本地 42 项核心测试、11 项 Flutter 测试及静态分析通过。语音测试使用受控识别适配器验证临时转录不打卡、只用最终结果、自动结束、拒绝权限和中断。16 个主要页面检查 390/320 宽度与 1.5 倍字体；截图来自 Flutter 测试渲染，不是 iPhone 真机。新 IPA 必须来自本次提交对应的成功 Actions，旧构建不能代表新增语音功能。
+本次代码版本更新为 0.2.0+2。最终 GitHub CI 的 42 项核心测试、11 项 Flutter 测试及静态分析通过。语音测试使用受控识别适配器验证临时转录不打卡、只用最终结果、自动结束、拒绝权限和中断。16 个主要页面检查 390/320 宽度与 1.5 倍字体；截图来自 Flutter 测试渲染，不是 iPhone 真机。新 IPA 必须来自本次提交对应的成功 Actions，旧构建不能代表新增语音功能。
+
+最终应用提交 fa929a2 的 [Actions 构建 37762456398](https://github.com/iszkq/recitation-plan/actions/runs/37762456398) 全部成功。
+[下载新版未签名 IPA 产物](https://github.com/iszkq/recitation-plan/actions/runs/37762456398/artifacts/11542838665)，版本 0.2.0+2，SHA-256 为 a1fecd28a431e64c4ba259b2e2e4111d9cc14f303d63a0bd3126115a481c5a05。
+本次之后若仅更新截图、文档和验收记录，不重复构建 IPA；应用代码变化时再构建。

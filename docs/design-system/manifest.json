@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "updated_at": "2026-10-08",
   "system_origin": "greenfield",
   "product": {
@@ -41,7 +41,9 @@
       "https://developer.apple.com/design/human-interface-guidelines/",
       "https://swiftandcurious.com/2025/12/01/memorizeme/"
     ],
-    "screenshots": [],
+    "screenshots": [
+      "output/native-ui/release-preview.png"
+    ],
     "brand_docs": []
   },
   "direction": {
