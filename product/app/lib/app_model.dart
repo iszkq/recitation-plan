@@ -12,6 +12,7 @@ class AppModel extends ChangeNotifier {
   Map<String, Segment> segments = {};
   Map<String, String> articleNames = {};
   Map<String, String> segmentArticleIds = {};
+  List<Attempt> attempts = [];
   DateTime get today {
     final local = localTime(DateTime.now().toUtc(), 'Asia/Shanghai');
     return DateTime(local.year, local.month, local.day);
@@ -22,12 +23,17 @@ class AppModel extends ChangeNotifier {
     plans = await store.plans();
     tasks = await store.tasks();
     events = await store.events();
+    attempts = [];
     segments = {};
     articleNames = {};
     segmentArticleIds = {};
+    final attemptSegments = <String>{};
     for (final task in tasks) {
       final s = await store.getSegment(task.segmentId);
       if (s != null) segments[s.id] = s;
+      if (attemptSegments.add(task.segmentId)) {
+        attempts.addAll(await store.attemptsForSegment(task.segmentId));
+      }
     }
     for (final article in articles) {
       final v = await store.getArticleVersion(article.currentVersionId);
@@ -60,6 +66,23 @@ class AppModel extends ChangeNotifier {
           )
           .toList()
         ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+
+  /// All tasks scheduled for today, including completed ones. The overview
+  /// needs this separate from [dueTasks], which intentionally hides completed
+  /// work from the action queue.
+  List<Task> get todayTasks => tasks
+      .where(
+        (t) =>
+            t.dueDate.year == today.year &&
+            t.dueDate.month == today.month &&
+            t.dueDate.day == today.day &&
+            plans.any((p) => p.id == t.planId && !p.paused),
+      )
+      .toList()
+    ..sort((a, b) {
+      final status = a.status.index.compareTo(b.status.index);
+      return status != 0 ? status : a.dueDate.compareTo(b.dueDate);
+    });
   String taskTitle(Task t) =>
       '${articleNames[t.segmentId] ?? '文章'} · 第${(segments[t.segmentId]?.order ?? 0) + 1}节';
   ({int total, int mastered, bool active}) articleProgress(Article article) {

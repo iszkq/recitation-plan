@@ -24,6 +24,7 @@ abstract final class Design {
     letterSpacing: -0.6,
   );
   static const panelRadius = 16.0;
+  static const controlRadius = 14.0;
   static const chartHeight = 96.0;
   static const chartColumnWidth = 54.0;
   static const chartBarWidth = 22.0;
@@ -59,7 +60,9 @@ class PrimaryAction extends StatelessWidget {
     child: SizedBox(
       width: double.infinity,
       child: CupertinoButton.filled(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        minimumSize: const Size(52, 52),
+        borderRadius: BorderRadius.circular(Design.controlRadius),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         onPressed: busy ? null : onPressed,
         child: busy
             ? const CupertinoActivityIndicator(color: CupertinoColors.white)
@@ -149,8 +152,80 @@ class CardSection extends StatelessWidget {
       color: Design.panel,
       borderRadius: BorderRadius.circular(Design.panelRadius),
       border: Border.all(color: Design.line),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x0A000000),
+          blurRadius: 14,
+          offset: Offset(0, 4),
+        ),
+      ],
     ),
     child: child,
+  );
+}
+
+/// A compact metric used on overview pages. Keeping this component here makes
+/// the hierarchy of Today, Profile and Reports consistent on every device.
+class MetricTile extends StatelessWidget {
+  const MetricTile({
+    super.key,
+    required this.value,
+    required this.label,
+    this.detail,
+    this.color = Design.ink,
+  });
+  final String value;
+  final String label;
+  final String? detail;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 25,
+            height: 1.1,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(label, style: Design.caption),
+        if (detail != null) ...[
+          const SizedBox(height: 2),
+          Text(detail!, style: const TextStyle(fontSize: 12, color: Design.secondary)),
+        ],
+      ],
+    ),
+  );
+}
+
+class IconBadge extends StatelessWidget {
+  const IconBadge(
+    this.icon, {
+    super.key,
+    this.color = Design.accent,
+    this.background = Design.accentSoft,
+    this.size = 44,
+  });
+  final IconData icon;
+  final Color color;
+  final Color background;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      color: background,
+      borderRadius: BorderRadius.circular(size * .28),
+    ),
+    child: Icon(icon, color: color, size: size * .5),
   );
 }
 

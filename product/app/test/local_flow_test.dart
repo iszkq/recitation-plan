@@ -40,7 +40,7 @@ void main() {
     await revealAction(tester, '预览分段');
     await tester.tap(find.text('预览分段'));
     await tester.pumpAndSettle();
-    expect(find.text('共 2 节'), findsOneWidget);
+    expect(find.text('共 2 节 · 8 字'), findsOneWidget);
     await tester.enterText(find.byType(CupertinoTextField).first, '');
     await revealAction(tester, '保存文章');
     await tester.tap(find.text('保存文章'));
@@ -160,7 +160,7 @@ void main() {
     expect(model.plans.single.rule.accuracyThreshold, 90);
     await tester.tap(find.text('今日').last);
     await tester.pumpAndSettle();
-    expect(find.text('今天完成 1 个任务'), findsOneWidget);
+    expect(find.text('今天还有 1 个任务'), findsOneWidget);
     await tester.tap(find.text('劝学 · 第1节'));
     await tester.pumpAndSettle();
     expect(find.text('学不可以已。'), findsOneWidget);
