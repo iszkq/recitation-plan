@@ -28,11 +28,11 @@
 
 ## 安装到 iPhone
 
-开发调试：在有 Xcode 的 Mac 打开 `product/app/ios/Runner.xcworkspace`，为 Runner 选择自己的开发团队并更改唯一 Bundle ID，然后连接 iPhone 运行。个人 Apple ID 的免费开发签名有有效期和设备限制。
+开发调试：在有 Xcode 的 Mac 打开 `product/app/ios/Runner.xcworkspace`，为 Runner 选择自己的开发团队，然后连接 iPhone 运行。已有安装需要保留此前实际使用的 Bundle ID 与签名身份；仅首次安装或创建独立测试应用时才改为账户可用的新标识。个人 Apple ID 的免费开发签名有有效期和设备限制。
 
 长期内测：准备付费 Apple Developer 账户、App Store Connect 应用、唯一 Bundle ID、签名证书和描述文件。在 macOS 配置签名后执行 `flutter build ipa --release`，上传 App Store Connect，再用 TestFlight 安装。GitHub 可以自动做此步骤，但必须先将签名和上传凭据放入仓库 Secrets；项目没有预置这些凭据。
 
-现有 Bundle ID `cn.recitation.recitationApp` 是临时标识，正式提交前应替换为账户可用的唯一标识。
+现有 Bundle ID 为 `cn.recitation.recitationApp`。覆盖升级须保留旧安装实际使用的标识与签名身份，不要先卸载旧应用。若首次正式上架需要更换标识，应先规划本机档案迁移。
 
 ## 发布前待办
 
@@ -44,10 +44,16 @@
 
 本机源码分析和组件测试不能替代 iOS 构建、平台插件测试及真机验收。
 
-## 当前版本验证
+## 历史版本 0.2.0 验证
 
-本次代码版本更新为 0.2.0+2。最终 GitHub CI 的 42 项核心测试、11 项 Flutter 测试及静态分析通过。语音测试使用受控识别适配器验证临时转录不打卡、只用最终结果、自动结束、拒绝权限和中断。16 个主要页面检查 390/320 宽度与 1.5 倍字体；截图来自 Flutter 测试渲染，不是 iPhone 真机。新 IPA 必须来自本次提交对应的成功 Actions，旧构建不能代表新增语音功能。
+当时代码版本为 0.2.0+2。最终 GitHub CI 的 42 项核心测试、11 项 Flutter 测试及静态分析通过。语音测试使用受控识别适配器验证临时转录不打卡、只用最终结果、自动结束、拒绝权限和中断。16 个主要页面检查 390/320 宽度与 1.5 倍字体；截图来自 Flutter 测试渲染，不是 iPhone 真机。新 IPA 必须来自本次提交对应的成功 Actions，旧构建不能代表新增语音功能。
 
 最终应用提交 fa929a2 的 [Actions 构建 37762456398](https://github.com/iszkq/recitation-plan/actions/runs/37762456398) 全部成功。
 [下载新版未签名 IPA 产物](https://github.com/iszkq/recitation-plan/actions/runs/37762456398/artifacts/11542838665)，版本 0.2.0+2，SHA-256 为 a1fecd28a431e64c4ba259b2e2e4111d9cc14f303d63a0bd3126115a481c5a05。
 本次之后若仅更新截图、文档和验收记录，不重复构建 IPA；应用代码变化时再构建。
+
+## 当前版本 0.2.3+5
+
+支持单项/批量自选日期延期、撤销与工作量确认，自动通过后的提前完成及下次复习提示，iPhone 本地学习/每周备份提醒。提醒默认关闭，从“我的→提醒设置”开启；只在开启时申请系统权限。
+
+真实设备覆盖升级、通知和分享见 [真机验收步骤](真机覆盖升级验收.md)，自动验证与发布记录见 [延期撤销与提醒验收](延期撤销与提醒验收.md)。此版本产物链接在构建完成后更新。

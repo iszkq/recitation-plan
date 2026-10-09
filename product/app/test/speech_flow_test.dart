@@ -106,7 +106,9 @@ void main() {
       180,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.text('再次考核'));
+    await tester.ensureVisible(find.widgetWithText(CupertinoButton, '再次考核'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(CupertinoButton, '再次考核'));
     await tester.pump();
     expect(find.textContaining('原文：'), findsNothing);
     expect(find.textContaining('你的背诵：'), findsNothing);
