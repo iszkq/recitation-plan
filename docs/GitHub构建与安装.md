@@ -62,6 +62,8 @@
 
 新增计划月历、剩余新背重新排期、积压复习分日处理和本机快照恢复。沿用 Bundle ID `cn.recitation.recitationApp`，iOS 15+，保持原安装身份覆盖升级。[Actions 37899285227](https://github.com/iszkq/recitation-plan/actions/runs/37899285227)通过73项核心、33项Flutter及iOS Release。[未签名IPA](https://github.com/iszkq/recitation-plan/actions/runs/37899285227/artifacts/11601479488)，SHA-256：`77be010ea312270fa7166a01de82da545bc340dc2cf1f2e5a2d47bf6f985a4a9`。
 
-## 0.2.5+7 构建中
+## 0.2.5+7 已验证
 
 新增文字/语音逐字高亮校对、语音同音容错及校正内容展示、连续学习与学习花园。成熟方案取舍、测试及最终构建记录见 [语音校对方案与成长验收](语音校对方案与成长验收.md)。仍保留原Bundle ID与签名升级要求，未签名包需签名后安装。
+
+[Actions 37905518159](https://github.com/iszkq/recitation-plan/actions/runs/37905518159)通过79项核心、37项Flutter测试及macOS iOS Release构建。[下载0.2.5+7未签名IPA](https://github.com/iszkq/recitation-plan/actions/runs/37905518159/artifacts/11604741344)，SHA-256：`e6b20477f7a3dbcea33d91ada115d21d170aca5053863e904eb1947b1fa14b12`。下载后的包版本、校验值、ARM64和Bundle ID已核对；真机识别、签名与覆盖安装待iPhone验证。
