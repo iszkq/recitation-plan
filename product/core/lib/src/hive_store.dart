@@ -5,7 +5,7 @@ import 'package:hive_ce/hive.dart';
 import 'memory_store.dart';
 
 /// One Hive value is the atomic unit for a local learning batch.
-/// Uses the public Hive API with a path-specific box name and no adapters.
+/// Existing filenames are retained even when iOS relocates the data container.
 class HiveRecitationStore extends MemoryRecitationStore {
   HiveRecitationStore._(this._box, Map<String, dynamic>? state)
       : super(initial: state);
@@ -18,7 +18,21 @@ class HiveRecitationStore extends MemoryRecitationStore {
         .convert(utf8.encode(directory.path.toLowerCase()))
         .toString()
         .substring(0, 16);
-    final name = 'recitation_snapshot_$suffix';
+    final existingNames = await directory
+        .list()
+        .where((entity) => entity is File)
+        .map((entity) => entity.uri.pathSegments.last)
+        .where((name) =>
+            RegExp(r'^recitation_snapshot_[0-9a-f]{16}\.hive$').hasMatch(name))
+        .map((name) => name.substring(0, name.length - '.hive'.length))
+        .toList();
+    if (existingNames.length > 1) {
+      throw const FormatException('发现多个本机档案，请先导出并确认恢复方式；原有数据未清除');
+    }
+    // The path hash names new profiles only; a moved profile keeps its identity.
+    final name = existingNames.isEmpty
+        ? 'recitation_snapshot_$suffix'
+        : existingNames.single;
     if (Hive.isBoxOpen(name)) throw StateError('同一档案已打开');
     final box = await Hive.openBox<String>(name, path: directory.path);
     try {

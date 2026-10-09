@@ -36,6 +36,19 @@ class MemoryRecitationStore implements RecitationStore {
         if (old != null && old['status'] != AttemptStatus.processing.name)
           return false;
       }
+      for (final entry in batch.expectedTaskDueDates.entries) {
+        final old = (next['tasks'] as Map)[entry.key];
+        if (old == null ||
+            old['dueDate'] != EntityCodec.day(entry.value) ||
+            (batch.reschedulesPendingTasks &&
+                old['status'] != TaskStatus.pending.name)) {
+          throw StateError('任务已更新，请刷新后重试');
+        }
+        final plan = (next['plans'] as Map)[old['planId']];
+        if (plan == null || plan['deleted'] == true || plan['paused'] == true) {
+          throw StateError('计划不存在或已暂停');
+        }
+      }
       void add(String table, JsonObject value, {bool immutable = false}) {
         final entries = next[table] as Map<String, dynamic>;
         final id = value['id'] as String;
@@ -58,7 +71,10 @@ class MemoryRecitationStore implements RecitationStore {
       for (final t in batch.tasks) {
         final old = (next['tasks'] as Map)[t.id];
         if (old != null && old['status'] == TaskStatus.completed.name) continue;
-        if (old != null && t.status == TaskStatus.pending) continue;
+        if (old != null &&
+            t.status == TaskStatus.pending &&
+            !(batch.reschedulesPendingTasks &&
+                batch.expectedTaskDueDates.containsKey(t.id))) continue;
         add('tasks', EntityCodec.task(t));
       }
       for (final a in batch.attempts) {
@@ -217,13 +233,7 @@ class MemoryRecitationStore implements RecitationStore {
   Future<void> completeTaskOnce(String id) async {
     final old = await getTask(id);
     if (old == null || old.status == TaskStatus.completed) return;
-    await saveTask(Task(
-        id: old.id,
-        planId: old.planId,
-        segmentId: old.segmentId,
-        kind: old.kind,
-        dueDate: old.dueDate,
-        status: TaskStatus.completed));
+    await saveTask(old.copyWith(status: TaskStatus.completed));
   }
 
   static Map<String, dynamic> _clone(Map value) =>

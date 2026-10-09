@@ -9,7 +9,9 @@ class RecitationBatch {
       this.tasks = const [],
       this.attempts = const [],
       this.events = const [],
-      this.finalizesAttemptId});
+      this.finalizesAttemptId,
+      this.expectedTaskDueDates = const {},
+      this.reschedulesPendingTasks = false});
   final List<Article> articles;
   final List<ArticleVersion> versions;
   final List<Plan> plans;
@@ -19,6 +21,10 @@ class RecitationBatch {
 
   /// A final result already persisted under this ID makes the whole batch a no-op.
   final String? finalizesAttemptId;
+
+  /// Checked inside the serialized write, before publishing any changes.
+  final Map<String, DateTime> expectedTaskDueDates;
+  final bool reschedulesPendingTasks;
 }
 
 /// 领域层不依赖 Hive、SQLite 或云服务，方便本机存储和测试替换。

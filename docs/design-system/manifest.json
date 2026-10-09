@@ -1,6 +1,6 @@
 {
-  "version": 3,
-  "updated_at": "2026-10-08",
+  "version": 4,
+  "updated_at": "2026-10-09",
   "system_origin": "greenfield",
   "product": {
     "name": "背诵计划",
@@ -14,7 +14,7 @@
     "primary_workflows": [
       "导入并分段",
       "制定月度计划",
-      "今日任务",
+      "今日任务与提前学习、延期",
       "语音背诵",
       "校对并达标打卡",
       "间隔复习",

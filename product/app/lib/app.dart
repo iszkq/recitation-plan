@@ -116,13 +116,48 @@ class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
   );
 }
 
-class TodayPage extends StatelessWidget {
+class TodayPage extends StatefulWidget {
   const TodayPage({super.key, required this.model});
   final AppModel model;
   @override
-  Widget build(BuildContext context) {
+  State<TodayPage> createState() => _TodayPageState();
+}
+
+class _TodayPageState extends State<TodayPage> {
+  bool postponing = false;
+  AppModel get model => widget.model;
+
+  Future<void> postpone() async {
+    final ids = model.dueTasks.map((t) => t.id).toList();
+    if (postponing || ids.isEmpty) return;
+    final accepted = await confirm(
+      context,
+      '将剩余任务延至明天？',
+      '${ids.length}个未完成任务将并入明天，明天原有任务继续保留。',
+      action: '延至明天',
+    );
+    if (!accepted || !mounted) return;
+    setState(() => postponing = true);
+    try {
+      await model.service.postponeTasksUntilTomorrow(ids);
+      await model.reload();
+    } catch (e) {
+      if (mounted) await showError(context, e);
+    } finally {
+      if (mounted) setState(() => postponing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: model,
+    builder: (context, _) => buildToday(context),
+  );
+
+  Widget buildToday(BuildContext context) {
     final tasks = model.dueTasks;
     final todayTasks = model.todayTasks;
+    final postponed = model.postponedToday;
     final completed = todayTasks
         .where((task) => task.status == TaskStatus.completed)
         .length;
@@ -147,7 +182,11 @@ class TodayPage extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     tasks.isEmpty
-                        ? (total == 0 ? '今天安排什么？' : '今天的任务完成了')
+                        ? (postponed > 0
+                              ? '剩余任务已延至明天'
+                              : total == 0
+                              ? '今天安排什么？'
+                              : '今天的任务完成了')
                         : '今天还有 ${tasks.length} 个任务',
                     style: Design.display,
                   ),
@@ -164,7 +203,9 @@ class TodayPage extends StatelessWidget {
                             Expanded(
                               child: Text(
                                 total == 0
-                                    ? '安排一小节，今天就开始'
+                                    ? (postponed > 0
+                                          ? '$postponed 个任务已延期'
+                                          : '安排一小节，今天就开始')
                                     : '保持学习节奏，完成今天的安排',
                                 style: Design.caption,
                               ),
@@ -189,7 +230,9 @@ class TodayPage extends StatelessWidget {
                           const SizedBox(height: 8),
                           Text(
                             completion == 1
-                                ? '今天的任务全部完成'
+                                ? (postponed > 0
+                                      ? '已完成 $completed 个，延期 $postponed 个'
+                                      : '今天的任务全部完成')
                                 : '完成 ${total - completed} 个任务后结束今天的学习',
                             style: Design.caption,
                           ),
@@ -198,11 +241,20 @@ class TodayPage extends StatelessWidget {
                     ),
                   ),
                   if (tasks.isNotEmpty) ...[
+                    CupertinoButton(
+                      onPressed: postponing ? null : postpone,
+                      child: postponing
+                          ? const CupertinoActivityIndicator()
+                          : const Text('将剩余任务延至明天'),
+                    ),
                     const Padding(
                       padding: EdgeInsets.only(top: 20, bottom: 10),
                       child: Text(
                         '今日队列',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     for (final task in tasks)
@@ -210,7 +262,7 @@ class TodayPage extends StatelessWidget {
                         inset: false,
                         title: model.taskTitle(task),
                         subtitle:
-                            '${task.kind == TaskKind.newLearning ? '新背' : '复习'} · ${model.segments[task.segmentId]?.text ?? ''}',
+                            '${task.kind == TaskKind.newLearning ? '新背' : '复习'} · ${model.taskScheduleLabel(task)} · ${model.segments[task.segmentId]?.text ?? ''}',
                         icon: task.kind == TaskKind.review
                             ? CupertinoIcons.refresh
                             : CupertinoIcons.book,
@@ -272,13 +324,23 @@ class TodayPage extends StatelessWidget {
                           ),
                           const SizedBox(width: 12),
                           const Expanded(
-                            child: Text(
-                              '今天的队列已经清空，明天按计划继续。',
-                              style: Design.caption,
-                            ),
+                            child: Text('今天的队列已经清空。', style: Design.caption),
                           ),
                         ],
                       ),
+                    ),
+                  if (model.plans.isNotEmpty)
+                    DetailRow(
+                      inset: false,
+                      title: '提前学习',
+                      subtitle: tasks.isEmpty ? '明天与后天的安排' : '完成今日队列后可提前新背',
+                      icon: CupertinoIcons.calendar,
+                      onTap: () =>
+                          Navigator.of(context, rootNavigator: true).push(
+                            CupertinoPageRoute(
+                              builder: (_) => UpcomingTasksPage(model: model),
+                            ),
+                          ),
                     ),
                 ]),
               ),
@@ -288,6 +350,75 @@ class TodayPage extends StatelessWidget {
       ),
     );
   }
+}
+
+class UpcomingTasksPage extends StatefulWidget {
+  const UpcomingTasksPage({super.key, required this.model});
+  final AppModel model;
+  @override
+  State<UpcomingTasksPage> createState() => _UpcomingTasksPageState();
+}
+
+class _UpcomingTasksPageState extends State<UpcomingTasksPage> {
+  int days = 1;
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: widget.model,
+    builder: (context, _) {
+      final model = widget.model;
+      final tasks = model.upcomingTasks(days);
+      return CupertinoPageScaffold(
+        navigationBar: const CupertinoNavigationBar(middle: Text('提前学习')),
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(Design.inset),
+            children: [
+              CupertinoSlidingSegmentedControl<int>(
+                groupValue: days,
+                children: const {1: Text('明天'), 2: Text('后天')},
+                onValueChanged: (value) {
+                  if (value != null) setState(() => days = value);
+                },
+              ),
+              const SizedBox(height: Design.gap),
+              Text(
+                dateLabel(
+                  DateTime(
+                    model.today.year,
+                    model.today.month,
+                    model.today.day + days,
+                  ),
+                ),
+                style: Design.heading,
+              ),
+              if (model.dueTasks.isNotEmpty)
+                const Text('今日队列尚未完成', style: Design.caption),
+              if (tasks.isEmpty) const EmptyContent('这天没有安排', '可以查看另一天的计划。'),
+              for (final task in tasks)
+                DetailRow(
+                  inset: false,
+                  title: model.taskTitle(task),
+                  subtitle:
+                      '${task.kind == TaskKind.review ? '复习 · 到期后考核' : '新背'} · ${model.taskScheduleLabel(task)}',
+                  done: task.status == TaskStatus.completed,
+                  onTap: model.canStartEarly(task)
+                      ? () => Navigator.of(context).push(
+                          CupertinoPageRoute(
+                            builder: (_) => TaskReadingPage(
+                              model: model,
+                              task: task,
+                              allowEarly: true,
+                            ),
+                          ),
+                        )
+                      : null,
+                ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }
 
 class LibraryPage extends StatefulWidget {
@@ -616,9 +747,15 @@ class _SegmentPreviewPageState extends State<SegmentPreviewPage> {
                 children: [
                   Row(
                     children: [
-                      Text('第${i + 1}节', style: const TextStyle(fontWeight: FontWeight.w600)),
+                      Text(
+                        '第${i + 1}节',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
                       const Spacer(),
-                      Text('${sections[i].text.trim().length} 字', style: Design.caption),
+                      Text(
+                        '${sections[i].text.trim().length} 字',
+                        style: Design.caption,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -765,7 +902,12 @@ class ArticlePage extends StatelessWidget {
                         ? 0.0
                         : progress.mastered / progress.total;
                     return Padding(
-                      padding: const EdgeInsets.fromLTRB(Design.inset, 12, Design.inset, 8),
+                      padding: const EdgeInsets.fromLTRB(
+                        Design.inset,
+                        12,
+                        Design.inset,
+                        8,
+                      ),
                       child: CardSection(
                         padding: const EdgeInsets.all(16),
                         child: Column(
@@ -778,21 +920,35 @@ class ArticlePage extends StatelessWidget {
                                 Expanded(
                                   child: Text(
                                     '${progress.mastered}/${progress.total} 节已掌握',
-                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
                                 StatusChip(
                                   progress.active ? '背诵中' : '未安排',
-                                  color: progress.active ? Design.accent : Design.secondary,
-                                  background: progress.active ? Design.accentSoft : Design.grouped,
+                                  color: progress.active
+                                      ? Design.accent
+                                      : Design.secondary,
+                                  background: progress.active
+                                      ? Design.accentSoft
+                                      : Design.grouped,
                                 ),
                               ],
                             ),
                             const SizedBox(height: 14),
-                            ProgressBar(value: ratio, color: ratio == 1 ? Design.success : Design.accent),
+                            ProgressBar(
+                              value: ratio,
+                              color: ratio == 1
+                                  ? Design.success
+                                  : Design.accent,
+                            ),
                             const SizedBox(height: 8),
                             Text(
-                              progress.total == 0 ? '等待安排学习计划' : '逐节完成无提示考核后会自动更新进度',
+                              progress.total == 0
+                                  ? '等待安排学习计划'
+                                  : '逐节完成无提示考核后会自动更新进度',
                               style: Design.caption,
                             ),
                           ],
@@ -985,7 +1141,12 @@ class PlansPage extends StatelessWidget {
               padding: const EdgeInsets.only(top: 12, bottom: 24),
               children: [
                 const Padding(
-                  padding: EdgeInsets.fromLTRB(Design.inset, 18, Design.inset, 8),
+                  padding: EdgeInsets.fromLTRB(
+                    Design.inset,
+                    18,
+                    Design.inset,
+                    8,
+                  ),
                   child: Text('安排你的节奏', style: Design.display),
                 ),
                 Padding(
@@ -1012,7 +1173,10 @@ class PlansPage extends StatelessWidget {
                         ),
                         Text(
                           '${model.dueTasks.length}',
-                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ],
                     ),
@@ -1089,14 +1253,18 @@ class _SegmentReadingPageState extends State<SegmentReadingPage> {
                     CupertinoButton(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       minimumSize: const Size(44, 44),
-                      onPressed: () => setState(() => scale = (scale - .1).clamp(.8, 1.4).toDouble()),
+                      onPressed: () => setState(
+                        () => scale = (scale - .1).clamp(.8, 1.4).toDouble(),
+                      ),
                       child: const Text('小'),
                     ),
                     Text('${(scale * 100).round()}%', style: Design.caption),
                     CupertinoButton(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       minimumSize: const Size(44, 44),
-                      onPressed: () => setState(() => scale = (scale + .1).clamp(.8, 1.4).toDouble()),
+                      onPressed: () => setState(
+                        () => scale = (scale + .1).clamp(.8, 1.4).toDouble(),
+                      ),
                       child: const Text('大'),
                     ),
                   ],
@@ -1127,9 +1295,15 @@ class _SegmentReadingPageState extends State<SegmentReadingPage> {
 }
 
 class TaskReadingPage extends StatelessWidget {
-  const TaskReadingPage({super.key, required this.model, required this.task});
+  const TaskReadingPage({
+    super.key,
+    required this.model,
+    required this.task,
+    this.allowEarly = false,
+  });
   final AppModel model;
   final Task task;
+  final bool allowEarly;
   @override
   Widget build(BuildContext context) => CupertinoPageScaffold(
     navigationBar: const CupertinoNavigationBar(middle: Text('准备背诵')),
@@ -1138,6 +1312,8 @@ class TaskReadingPage extends StatelessWidget {
         padding: const EdgeInsets.all(Design.inset),
         children: [
           Text(model.taskTitle(task), style: Design.heading),
+          if (allowEarly)
+            Text('提前新背 · 原定${dateLabel(task.dueDate)}', style: Design.caption),
           const SizedBox(height: 12),
           CardSection(
             padding: const EdgeInsets.all(16),
@@ -1155,7 +1331,10 @@ class TaskReadingPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: Design.gap),
-          Text(model.segments[task.segmentId]?.text ?? '原文暂时不可用', style: Design.reading),
+          Text(
+            model.segments[task.segmentId]?.text ?? '原文暂时不可用',
+            style: Design.reading,
+          ),
           const SizedBox(height: Design.sectionGap),
           CupertinoButton(
             onPressed: model.segments.containsKey(task.segmentId)
@@ -1177,8 +1356,11 @@ class TaskReadingPage extends StatelessWidget {
                 ? () => Navigator.pushReplacement(
                     context,
                     CupertinoPageRoute(
-                      builder: (_) =>
-                          TextAssessmentPage(model: model, task: task),
+                      builder: (_) => TextAssessmentPage(
+                        model: model,
+                        task: task,
+                        allowEarly: allowEarly,
+                      ),
                     ),
                   )
                 : null,
@@ -1188,8 +1370,11 @@ class TaskReadingPage extends StatelessWidget {
                 ? () => Navigator.pushReplacement(
                     context,
                     CupertinoPageRoute(
-                      builder: (_) =>
-                          SpeechAssessmentPage(model: model, task: task),
+                      builder: (_) => SpeechAssessmentPage(
+                        model: model,
+                        task: task,
+                        allowEarly: allowEarly,
+                      ),
                     ),
                   )
                 : null,
@@ -1260,10 +1445,19 @@ class PlanDetailPage extends StatelessWidget {
         .length;
     final totalNew = tasks.where((t) => t.kind == TaskKind.newLearning).length;
     final progress = totalNew == 0 ? 0.0 : completed / totalNew;
-    final completedReviews = tasks.where((t) => t.kind == TaskKind.review && t.status == TaskStatus.completed).length;
+    final completedReviews = tasks
+        .where(
+          (t) => t.kind == TaskKind.review && t.status == TaskStatus.completed,
+        )
+        .length;
     final totalReviews = tasks.where((t) => t.kind == TaskKind.review).length;
-    final needsReview = model.attempts.where((a) =>
-        tasks.any((t) => t.id == a.taskId) && a.status == AttemptStatus.needsReview).length;
+    final needsReview = model.attempts
+        .where(
+          (a) =>
+              tasks.any((t) => t.id == a.taskId) &&
+              a.status == AttemptStatus.needsReview,
+        )
+        .length;
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
         middle: Text(current.name),
@@ -1325,25 +1519,35 @@ class PlanDetailPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '已完成 $completed / $totalNew 节新背',
-                    style: Design.heading,
-                  ),
+                  Text('已完成 $completed / $totalNew 节新背', style: Design.heading),
                   const SizedBox(height: Design.gap),
                   ProgressBar(
                     value: progress,
-                    color: progress == 1 && totalNew > 0 ? Design.success : Design.accent,
+                    color: progress == 1 && totalNew > 0
+                        ? Design.success
+                        : Design.accent,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    progress == 1 && totalNew > 0 ? '新背内容已全部完成' : '完成新背后会自动进入间隔复习',
+                    progress == 1 && totalNew > 0
+                        ? '新背内容已全部完成'
+                        : '完成新背后会自动进入间隔复习',
                     style: Design.caption,
                   ),
                   const SizedBox(height: Design.gap),
                   Row(
                     children: [
-                      MetricTile(value: '$completedReviews/$totalReviews', label: '复习完成', detail: '已安排复习'),
-                      MetricTile(value: '$needsReview', label: '待人工复核', detail: '需确认结果', color: needsReview > 0 ? Design.error : Design.ink),
+                      MetricTile(
+                        value: '$completedReviews/$totalReviews',
+                        label: '复习完成',
+                        detail: '已安排复习',
+                      ),
+                      MetricTile(
+                        value: '$needsReview',
+                        label: '待人工复核',
+                        detail: '需确认结果',
+                        color: needsReview > 0 ? Design.error : Design.ink,
+                      ),
                     ],
                   ),
                   const SizedBox(height: Design.gap),
@@ -1359,16 +1563,20 @@ class PlanDetailPage extends StatelessWidget {
               DetailRow(
                 title: model.taskTitle(task),
                 subtitle:
-                    '${dateLabel(task.dueDate)} · ${task.kind == TaskKind.newLearning ? '新背' : '复习'} · ${task.status == TaskStatus.completed ? '已完成' : '待完成'}',
+                    '${dateLabel(task.dueDate)} · ${task.kind == TaskKind.newLearning ? '新背' : '复习'} · ${model.taskScheduleLabel(task)}',
                 done: task.status == TaskStatus.completed,
                 onTap:
                     task.status == TaskStatus.pending &&
-                        !task.dueDate.isAfter(model.today) &&
+                        (!task.dueDate.isAfter(model.today) ||
+                            model.canStartEarly(task)) &&
                         !current.paused
                     ? () => Navigator.of(context, rootNavigator: true).push(
                         CupertinoPageRoute(
-                          builder: (_) =>
-                              TaskReadingPage(model: model, task: task),
+                          builder: (_) => TaskReadingPage(
+                            model: model,
+                            task: task,
+                            allowEarly: model.canStartEarly(task),
+                          ),
                         ),
                       )
                     : null,
@@ -1780,7 +1988,10 @@ class _PlanCreatePageState extends State<PlanCreatePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('排期预览', style: TextStyle(fontWeight: FontWeight.w700)),
+                      const Text(
+                        '排期预览',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         preview.fits
@@ -1791,7 +2002,13 @@ class _PlanCreatePageState extends State<PlanCreatePage> {
                     ],
                   ),
                 ),
-                Text('$segmentCount节', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                Text(
+                  '$segmentCount节',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1917,10 +2134,12 @@ class SpeechAssessmentPage extends StatefulWidget {
     required this.model,
     required this.task,
     this.speechProvider,
+    this.allowEarly = false,
   });
   final AppModel model;
   final Task task;
   final SpeechProvider? speechProvider;
+  final bool allowEarly;
   @override
   State<SpeechAssessmentPage> createState() => _SpeechAssessmentPageState();
 }
@@ -2075,6 +2294,7 @@ class _SpeechAssessmentPageState extends State<SpeechAssessmentPage> {
         attemptId: attemptId,
         transcript: text,
         isFinal: true,
+        allowEarly: widget.allowEarly,
         activeSeconds: active.elapsed.inSeconds,
       );
       await widget.model.reload();
@@ -2277,9 +2497,11 @@ class TextAssessmentPage extends StatefulWidget {
     super.key,
     required this.model,
     required this.task,
+    this.allowEarly = false,
   });
   final AppModel model;
   final Task task;
+  final bool allowEarly;
   @override
   State<TextAssessmentPage> createState() => _TextAssessmentPageState();
 }
@@ -2340,6 +2562,7 @@ class _TextAssessmentPageState extends State<TextAssessmentPage>
         attemptId: attemptId,
         transcript: answer.text,
         isFinal: true,
+        allowEarly: widget.allowEarly,
         activeSeconds: active.elapsed.inSeconds,
       );
       await widget.model.reload();
@@ -2398,16 +2621,27 @@ class _TextAssessmentPageState extends State<TextAssessmentPage>
                           : Design.errorSoft,
                     ),
                     const SizedBox(height: 12),
-                    Text('${score.accuracy.toStringAsFixed(1)}%', style: Design.display),
+                    Text(
+                      '${score.accuracy.toStringAsFixed(1)}%',
+                      style: Design.display,
+                    ),
                     const Text('内容一致率', style: Design.caption),
                     const SizedBox(height: 12),
                     ProgressBar(
                       value: score.accuracy / 100,
-                      color: result!.status == AttemptStatus.passed ? Design.success : Design.accent,
+                      color: result!.status == AttemptStatus.passed
+                          ? Design.success
+                          : Design.accent,
                     ),
                     const SizedBox(height: 10),
-                    Text('原文覆盖率 ${score.coverage.toStringAsFixed(1)}%', style: Design.caption),
-                    Text('漏字 ${score.deleted} · 错字 ${score.substituted} · 多说 ${score.inserted}', style: Design.caption),
+                    Text(
+                      '原文覆盖率 ${score.coverage.toStringAsFixed(1)}%',
+                      style: Design.caption,
+                    ),
+                    Text(
+                      '漏字 ${score.deleted} · 错字 ${score.substituted} · 多说 ${score.inserted}',
+                      style: Design.caption,
+                    ),
                   ],
                 ),
               ),
@@ -2497,7 +2731,8 @@ class ProfilePage extends StatelessWidget {
                     value: report.dueTasks == 0
                         ? 0
                         : report.completedTasks / report.dueTasks,
-                    color: report.completedTasks == report.dueTasks &&
+                    color:
+                        report.completedTasks == report.dueTasks &&
                             report.dueTasks > 0
                         ? Design.success
                         : Design.accent,
@@ -2930,19 +3165,34 @@ class _BackupPageState extends State<BackupPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('当前档案', style: TextStyle(fontWeight: FontWeight.w700)),
+                const Text(
+                  '当前档案',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    MetricTile(value: '${widget.model.articles.length}', label: '篇文章'),
-                    MetricTile(value: '${widget.model.plans.length}', label: '个计划'),
-                    MetricTile(value: '${widget.model.tasks.length}', label: '条任务'),
+                    MetricTile(
+                      value: '${widget.model.articles.length}',
+                      label: '篇文章',
+                    ),
+                    MetricTile(
+                      value: '${widget.model.plans.length}',
+                      label: '个计划',
+                    ),
+                    MetricTile(
+                      value: '${widget.model.tasks.length}',
+                      label: '条任务',
+                    ),
                   ],
                 ),
                 const SizedBox(height: 10),
                 const Text('导出会包含文章、计划、成绩和复习记录，不会包含录音。', style: Design.caption),
                 const SizedBox(height: 8),
-                Text('当前任务 ${widget.model.tasks.length} 条 · 考核记录 ${widget.model.attempts.length} 条', style: Design.caption),
+                Text(
+                  '当前任务 ${widget.model.tasks.length} 条 · 考核记录 ${widget.model.attempts.length} 条',
+                  style: Design.caption,
+                ),
               ],
             ),
           ),

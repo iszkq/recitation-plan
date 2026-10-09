@@ -82,6 +82,36 @@ void main() {
     expect(events.where((e) => e.type == LearningEventType.attempt).length, 1);
   });
 
+  test('提前完成与延期在Hive重开后保留原日期、新日期和调整事件', () async {
+    final first = await arrange(text: '学不可以已。\n\n青取之于蓝。\n\n冰水为之。');
+    final original = await store.tasks();
+    await service.submitFinalTranscript(
+        taskId: first.id,
+        attemptId: 'flex-today',
+        transcript: '学不可以已',
+        isFinal: true);
+    await service.submitFinalTranscript(
+        taskId: original[1].id,
+        attemptId: 'flex-early',
+        transcript: '青取之于蓝',
+        isFinal: true,
+        allowEarly: true);
+    now = DateTime.utc(2026, 10, 10, 4);
+    await service.postponeTasksUntilTomorrow([original[2].id]);
+    await store.close();
+    store = await HiveRecitationStore.open(directory.path);
+    expect((await store.getTask(original[1].id))!.status, TaskStatus.completed);
+    expect(
+        (await store.getTask(original[1].id))!.dueDate, DateTime(2026, 10, 9));
+    final delayed = (await store.getTask(original[2].id))!;
+    expect(delayed.dueDate, DateTime(2026, 10, 11));
+    expect(delayed.scheduledDate, DateTime(2026, 10, 10));
+    expect(
+        (await store.events())
+            .where((e) => e.type == LearningEventType.taskRescheduled),
+        hasLength(1));
+  });
+
   test('临时识别、辅助练习与待复核结果不能完成任务', () async {
     final task = await arrange();
     await expectLater(

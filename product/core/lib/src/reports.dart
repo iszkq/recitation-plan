@@ -58,6 +58,26 @@ LearningReport buildReport({
   }
   final all = unique.values.toList();
   final cutoff = asOf == null ? range.end : _dayOnly(asOf);
+  final schedules = <String, LearningEvent>{};
+  final rescheduled = <String, LearningEvent>{};
+  final completedDates = <String, DateTime>{};
+  for (final event in all) {
+    final id = event.taskId;
+    if (id == null) continue;
+    final day = _dayOnly(localDate(event));
+    if (event.type == LearningEventType.taskDue) schedules[id] = event;
+    if (day.isAfter(cutoff)) continue;
+    if (event.type == LearningEventType.taskRescheduled &&
+        event.dueDate != null) {
+      final old = rescheduled[id];
+      if (old == null || !event.occurredAt.isBefore(old.occurredAt))
+        rescheduled[id] = event;
+    }
+    if (event.type == LearningEventType.taskCompleted) {
+      final old = completedDates[id];
+      if (old == null || day.isBefore(old)) completedDates[id] = day;
+    }
+  }
   final selected = all.where((event) {
     final day = _dayOnly(localDate(event));
     return !day.isBefore(range.start) &&
@@ -100,10 +120,6 @@ LearningReport buildReport({
     if (event.type == LearningEventType.taskCompleted && event.taskId != null) {
       completedTaskIds.add(event.taskId!);
     }
-    if (event.type == LearningEventType.taskDue && event.taskId != null) {
-      dueTaskIds.add(event.taskId!);
-      dueByDay.putIfAbsent(day, () => <String>{}).add(event.taskId!);
-    }
     if (event.type == LearningEventType.taskSkipped && event.taskId != null) {
       dueTaskIds.add(event.taskId!);
       dueByDay.putIfAbsent(day, () => <String>{}).add(event.taskId!);
@@ -133,6 +149,19 @@ LearningReport buildReport({
     if (event.type == LearningEventType.technicalFailure ||
         event.status == AttemptStatus.technicalFailure) technical++;
   }
+  for (final entry in schedules.entries) {
+    final date =
+        rescheduled[entry.key]?.dueDate ?? _dayOnly(localDate(entry.value));
+    if (date.isBefore(range.start) ||
+        date.isAfter(range.end) ||
+        date.isAfter(cutoff)) continue;
+    dueTaskIds.add(entry.key);
+    dueByDay.putIfAbsent(date, () => <String>{}).add(entry.key);
+    final completed = completedDates[entry.key];
+    if (completed != null) {
+      completedTaskIds.add(entry.key);
+    }
+  }
   return LearningReport(
     period: period,
     start: range.start,
@@ -146,16 +175,23 @@ LearningReport buildReport({
     manualConfirmations: manual,
     technicalFailures: technical,
     learningDays: learningDays.length,
-    checkInDays: _checkInDays(dueByDay, completedByDay),
+    checkInDays: _checkInDays(dueByDay, completedByDay, completedDates),
     focusMinutes: focusSeconds ~/ 60,
   );
 }
 
-int _checkInDays(Map<DateTime, Set<String>> dueByDay,
-    Map<DateTime, Set<String>> completedByDay) {
+int _checkInDays(
+    Map<DateTime, Set<String>> dueByDay,
+    Map<DateTime, Set<String>> completedByDay,
+    Map<String, DateTime> completedDates) {
   return dueByDay.entries.where((entry) {
     final completed = completedByDay[entry.key] ?? const <String>{};
-    return entry.value.isNotEmpty && entry.value.every(completed.contains);
+    return entry.value.isNotEmpty &&
+        completed.isNotEmpty &&
+        entry.value.every((id) {
+          final date = completedDates[id];
+          return date != null && !date.isAfter(entry.key);
+        });
   }).length;
 }
 

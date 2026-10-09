@@ -112,6 +112,8 @@ class EntityCodec {
         'segmentId': t.segmentId,
         'kind': t.kind.name,
         'dueDate': day(t.dueDate),
+        if (t.originalDueDate != null)
+          'originalDueDate': day(t.originalDueDate!),
         'status': t.status.name,
       };
   static Task readTask(JsonObject j) => Task(
@@ -120,6 +122,8 @@ class EntityCodec {
         segmentId: j['segmentId'],
         kind: TaskKind.values.byName(j['kind']),
         dueDate: readDay(j['dueDate']),
+        originalDueDate:
+            j['originalDueDate'] == null ? null : readDay(j['originalDueDate']),
         status: TaskStatus.values.byName(j['status']),
       );
   static JsonObject score(Score s) => {
@@ -178,6 +182,7 @@ class EntityCodec {
         'source': e.source?.name,
         'status': e.status?.name,
         'taskKind': e.taskKind?.name,
+        if (e.dueDate != null) 'dueDate': day(e.dueDate!),
       };
   static LearningEvent readEvent(JsonObject j) => LearningEvent(
         id: j['id'],
@@ -197,5 +202,6 @@ class EntityCodec {
         taskKind: j['taskKind'] == null
             ? null
             : TaskKind.values.byName(j['taskKind']),
+        dueDate: j['dueDate'] == null ? null : readDay(j['dueDate']),
       );
 }

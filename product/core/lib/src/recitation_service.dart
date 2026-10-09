@@ -152,6 +152,44 @@ class RecitationService {
     await store.deletePlan(planId);
   }
 
+  Future<int> postponeTasksUntilTomorrow(List<String> taskIds) async {
+    final tasks = <Task>[];
+    final events = <LearningEvent>[];
+    final expected = <String, DateTime>{};
+    final now = _clock().toUtc();
+    for (final id in taskIds.toSet()) {
+      final task = await store.getTask(id);
+      if (task == null || task.status != TaskStatus.pending) {
+        throw StateError('只能延后未完成的任务，请刷新后重试');
+      }
+      final plan = await store.getPlan(task.planId);
+      if (plan == null || plan.paused) throw StateError('计划不存在或已暂停');
+      final local = localTime(now, plan.timeZone);
+      final today = DateTime(local.year, local.month, local.day);
+      if (task.dueDate.isAfter(today)) throw StateError('只能延后今日队列中的任务');
+      final tomorrow = DateTime(today.year, today.month, today.day + 1);
+      expected[id] = task.dueDate;
+      tasks.add(task.copyWith(dueDate: tomorrow));
+      events.add(LearningEvent(
+          id: _id(),
+          type: LearningEventType.taskRescheduled,
+          occurredAt: now,
+          timeZone: plan.timeZone,
+          durationSeconds: 0,
+          taskId: id,
+          segmentId: task.segmentId,
+          taskKind: task.kind,
+          dueDate: tomorrow));
+    }
+    if (tasks.isEmpty) return 0;
+    await store.writeBatch(RecitationBatch(
+        tasks: tasks,
+        events: events,
+        expectedTaskDueDates: expected,
+        reschedulesPendingTasks: true));
+    return tasks.length;
+  }
+
   Future<Article> updateArticle({
     required Article article,
     required String title,
@@ -216,6 +254,7 @@ class RecitationService {
       bool assisted = false,
       bool hasUnresolvedDoubt = false,
       bool technicalFailure = false,
+      bool allowEarly = false,
       int activeSeconds = 0}) async {
     if (!isFinal) throw StateError('临时识别结果不能提交考核');
     if (attemptId.trim().isEmpty || activeSeconds < 0)
@@ -231,8 +270,27 @@ class RecitationService {
     final plan = await store.getPlan(task.planId);
     if (plan == null || plan.paused) throw StateError('计划不存在或已暂停');
     final day = localTime(_clock(), plan.timeZone);
-    if (task.dueDate.isAfter(DateTime(day.year, day.month, day.day))) {
-      throw StateError('任务尚未到学习日期');
+    final today = DateTime(day.year, day.month, day.day);
+    if (task.dueDate.isAfter(today)) {
+      if (!allowEarly ||
+          task.kind != TaskKind.newLearning ||
+          task.dueDate
+              .isAfter(DateTime(today.year, today.month, today.day + 2))) {
+        throw StateError('仅支持提前完成明天或后天的新背任务，复习请在到期后进行');
+      }
+      final activePlans = {
+        for (final p in await store.plans())
+          if (!p.paused) p.id: p
+      };
+      for (final pending in await store.tasks()) {
+        final active = activePlans[pending.planId];
+        if (active == null || pending.status != TaskStatus.pending) continue;
+        final local = localTime(_clock(), active.timeZone);
+        if (!pending.dueDate
+            .isAfter(DateTime(local.year, local.month, local.day))) {
+          throw StateError('请先完成今日队列，再提前学习');
+        }
+      }
     }
     // Lookup by identity, never infer identity from displayed paragraph order.
     final segment = await store.getSegment(task.segmentId);
@@ -272,13 +330,7 @@ class RecitationService {
     final tasks = <Task>[];
     if (decision.countsAsAutomaticCompletion &&
         task.status != TaskStatus.completed) {
-      tasks.add(Task(
-          id: task.id,
-          planId: task.planId,
-          segmentId: task.segmentId,
-          kind: task.kind,
-          dueDate: task.dueDate,
-          status: TaskStatus.completed));
+      tasks.add(task.copyWith(status: TaskStatus.completed));
       events.add(LearningEvent(
           id: 'completed:${task.id}',
           type: LearningEventType.taskCompleted,
@@ -300,6 +352,7 @@ class RecitationService {
         attempts: [attempt],
         tasks: tasks,
         events: events,
+        expectedTaskDueDates: {task.id: task.dueDate},
         finalizesAttemptId: attemptId));
     return (await store.getAttempt(attemptId))!;
   }

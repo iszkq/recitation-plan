@@ -6,6 +6,7 @@ enum LearningEventType {
   taskDue,
   taskCompleted,
   taskSkipped,
+  taskRescheduled,
   technicalFailure
 }
 
@@ -22,6 +23,7 @@ class LearningEvent {
     this.source,
     this.status,
     this.taskKind,
+    this.dueDate,
   });
 
   final String id;
@@ -35,6 +37,7 @@ class LearningEvent {
   final AttemptSource? source;
   final AttemptStatus? status;
   final TaskKind? taskKind;
+  final DateTime? dueDate;
 
   bool get isValidDuration => durationSeconds > 0;
   bool get isAutomaticPass =>

@@ -121,6 +121,7 @@ class Task {
     required this.segmentId,
     required this.kind,
     required this.dueDate,
+    this.originalDueDate,
     this.status = TaskStatus.pending,
   });
 
@@ -129,7 +130,18 @@ class Task {
   final String segmentId;
   final TaskKind kind;
   final DateTime dueDate;
+  final DateTime? originalDueDate;
+  DateTime get scheduledDate => originalDueDate ?? dueDate;
   final TaskStatus status;
+
+  Task copyWith({DateTime? dueDate, TaskStatus? status}) => Task(
+      id: id,
+      planId: planId,
+      segmentId: segmentId,
+      kind: kind,
+      dueDate: dueDate ?? this.dueDate,
+      originalDueDate: originalDueDate ?? this.dueDate,
+      status: status ?? this.status);
 }
 
 @immutable

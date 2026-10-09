@@ -70,21 +70,74 @@ class AppModel extends ChangeNotifier {
   /// All tasks scheduled for today, including completed ones. The overview
   /// needs this separate from [dueTasks], which intentionally hides completed
   /// work from the action queue.
-  List<Task> get todayTasks => tasks
-      .where(
-        (t) =>
-            t.dueDate.year == today.year &&
-            t.dueDate.month == today.month &&
-            t.dueDate.day == today.day &&
-            plans.any((p) => p.id == t.planId && !p.paused),
-      )
-      .toList()
-    ..sort((a, b) {
-      final status = a.status.index.compareTo(b.status.index);
-      return status != 0 ? status : a.dueDate.compareTo(b.dueDate);
-    });
+  List<Task> get todayTasks =>
+      tasks
+          .where(
+            (t) =>
+                t.dueDate.year == today.year &&
+                t.dueDate.month == today.month &&
+                t.dueDate.day == today.day &&
+                plans.any((p) => p.id == t.planId && !p.paused),
+          )
+          .toList()
+        ..sort((a, b) {
+          final status = a.status.index.compareTo(b.status.index);
+          return status != 0 ? status : a.dueDate.compareTo(b.dueDate);
+        });
   String taskTitle(Task t) =>
       '${articleNames[t.segmentId] ?? '文章'} · 第${(segments[t.segmentId]?.order ?? 0) + 1}节';
+
+  bool canStartEarly(Task task) =>
+      dueTasks.isEmpty &&
+      task.kind == TaskKind.newLearning &&
+      task.status == TaskStatus.pending &&
+      task.dueDate.isAfter(today) &&
+      !task.dueDate.isAfter(DateTime(today.year, today.month, today.day + 2)) &&
+      plans.any((p) => p.id == task.planId && !p.paused);
+
+  List<Task> upcomingTasks(int days) {
+    final date = DateTime(today.year, today.month, today.day + days);
+    return tasks
+        .where(
+          (t) =>
+              t.dueDate == date &&
+              t.status != TaskStatus.skipped &&
+              plans.any((p) => p.id == t.planId && !p.paused),
+        )
+        .toList();
+  }
+
+  String taskScheduleLabel(Task task) {
+    final done = events.where(
+      (e) => e.type == LearningEventType.taskCompleted && e.taskId == task.id,
+    );
+    if (done.isNotEmpty) {
+      final local = eventLocalTime(done.first);
+      final date = DateTime(local.year, local.month, local.day);
+      return '${date.month}月${date.day}日${date.isBefore(task.dueDate) ? '提前完成' : '已完成'}';
+    }
+    if (task.scheduledDate != task.dueDate) {
+      return '已延期 · 原定${task.scheduledDate.month}月${task.scheduledDate.day}日';
+    }
+    return '待完成';
+  }
+
+  int get postponedToday => tasks
+      .where(
+        (task) =>
+            task.status == TaskStatus.pending &&
+            task.dueDate == DateTime(today.year, today.month, today.day + 1) &&
+            events.any((event) {
+              final local = eventLocalTime(event);
+              return event.type == LearningEventType.taskRescheduled &&
+                  event.taskId == task.id &&
+                  event.dueDate == task.dueDate &&
+                  DateTime(local.year, local.month, local.day) == today;
+            }) &&
+            plans.any((p) => p.id == task.planId && !p.paused),
+      )
+      .length;
+
   ({int total, int mastered, bool active}) articleProgress(Article article) {
     final ids = segments.values
         .where((s) => s.versionId == article.currentVersionId)

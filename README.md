@@ -20,7 +20,7 @@ Dart SDK 已安装在工作区 `.tools/dart-sdk`，无需修改全局 PATH。复
 
 Flutter 工具链位于 `.tools/flutter`。GitHub Actions 已完成核心测试、App 检查及 macOS 未签名 iOS 构建。Windows 本地不能验证 iOS 签名，未签名产物不能直接安装到 iPhone。
 
-计划已支持多篇文章和暂停/继续，分段保存保留确认后的边界，恢复到前台和跨日自动刷新任务。未到日期的任务不能提前考核通过。仓库：https://github.com/iszkq/recitation-plan 。Actions 成功后产出需自行签名的 `recitation-plan-unsigned.ipa`。
+计划支持多篇文章、暂停/继续和灵活排期。今日队列清空后，可从“提前学习”选择明天或后天的新背任务；文字和语音考核均按原门槛通过后完成，复习从实际通过当天计算。今日剩余任务可一次延至明天，与明天原任务合并，保留原定日期及调整历史。复习仅在到期后考核。恢复到前台和跨日自动刷新任务。仓库：https://github.com/iszkq/recitation-plan 。Actions 成功后产出需自行签名的 `recitation-plan-unsigned.ipa`。
 
 预览方式：在当前目录启动本地静态服务器，然后打开 `/ui/index.html`。无外部前端依赖，无网络字体。也可直接打开 HTML 使用原型功能。
 

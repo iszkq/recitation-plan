@@ -162,6 +162,7 @@ void main() {
       final speech = ControlledSpeech();
       final pages = <String, Widget>{
         'today': TodayPage(model: model),
+        'upcoming': UpcomingTasksPage(model: model),
         'library': LibraryPage(model: model),
         'article': ArticlePage(model: model, article: article),
         'import': ImportPage(model: model),
