@@ -161,6 +161,8 @@ void main() {
     await tester.tap(find.text('今日').last);
     await tester.pumpAndSettle();
     expect(find.text('今天还有 1 个任务'), findsOneWidget);
+    await tester.ensureVisible(find.text('劝学 · 第1节'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('劝学 · 第1节'));
     await tester.pumpAndSettle();
     expect(find.text('学不可以已。'), findsOneWidget);
