@@ -16,3 +16,7 @@
 - https://developer.apple.com/documentation/speech
 
 离线设计知识检索覆盖了单列任务流、低动态与可读性。语料更偏营销网页，粒子、玻璃、拖拽焦点等结果与本产品冲突，全部拒绝。以用户明确风格、原生规范和阅读任务为主，未将检索到的营销模板套入 App。
+
+## 自选日期与提醒
+
+0.2.3 延用系统 iOS 日期/时间滚轮、取消/确定底部面板和开关，不新增装饰色。Flutter 测试引擎截图：output/native-ui/postpone-custom-390.png、postpone-history-390.png、reminder-settings-390.png；320pt 截图检验大字体，不代表 iPhone 真机。

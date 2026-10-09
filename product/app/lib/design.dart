@@ -25,6 +25,7 @@ abstract final class Design {
   );
   static const panelRadius = 16.0;
   static const controlRadius = 14.0;
+  static const pickerSheetHeight = 330.0;
   static const chartHeight = 96.0;
   static const chartColumnWidth = 54.0;
   static const chartBarWidth = 22.0;
@@ -82,6 +83,7 @@ class DetailRow extends StatelessWidget {
     this.done = false,
     this.inset = true,
     this.progress,
+    this.subtitleMaxLines = 3,
   });
   final String title;
   final String subtitle;
@@ -90,6 +92,7 @@ class DetailRow extends StatelessWidget {
   final bool done;
   final bool inset;
   final double? progress;
+  final int? subtitleMaxLines;
   @override
   Widget build(BuildContext context) => Container(
     margin: EdgeInsets.symmetric(
@@ -122,7 +125,13 @@ class DetailRow extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(subtitle, maxLines: 3, style: Design.caption),
+            DefaultTextStyle(
+              style: CupertinoTheme.of(context).textTheme.textStyle
+                  .merge(Design.caption),
+              maxLines: subtitleMaxLines,
+              overflow: TextOverflow.clip,
+              child: Text(subtitle),
+            ),
             if (progress != null) ...[
               const SizedBox(height: 8),
               ProgressBar(value: progress!),
@@ -197,7 +206,10 @@ class MetricTile extends StatelessWidget {
         Text(label, style: Design.caption),
         if (detail != null) ...[
           const SizedBox(height: 2),
-          Text(detail!, style: const TextStyle(fontSize: 12, color: Design.secondary)),
+          Text(
+            detail!,
+            style: const TextStyle(fontSize: 12, color: Design.secondary),
+          ),
         ],
       ],
     ),
@@ -374,3 +386,33 @@ Future<void> showError(BuildContext context, Object error) =>
         ],
       ),
     );
+
+/// Shared system picker surface for date and reminder time selection.
+class PickerSheet extends StatelessWidget {
+  const PickerSheet({super.key, required this.onConfirm, required this.child});
+  final VoidCallback onConfirm;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => Container(
+    height: Design.pickerSheetHeight,
+    color: Design.panel,
+    child: SafeArea(
+      top: false,
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              CupertinoButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('取消'),
+              ),
+              CupertinoButton(onPressed: onConfirm, child: const Text('确定')),
+            ],
+          ),
+          Expanded(child: child),
+        ],
+      ),
+    ),
+  );
+}

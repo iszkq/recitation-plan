@@ -179,6 +179,7 @@ class RecitationService {
           taskId: id,
           segmentId: task.segmentId,
           taskKind: task.kind,
+          previousDueDate: task.dueDate,
           dueDate: tomorrow));
     }
     if (tasks.isEmpty) return 0;
@@ -188,6 +189,98 @@ class RecitationService {
         expectedTaskDueDates: expected,
         reschedulesPendingTasks: true));
     return tasks.length;
+  }
+
+  Future<int> postponeTasks(List<String> taskIds, DateTime target) async {
+    final date = DateTime(target.year, target.month, target.day);
+    final now = _clock().toUtc();
+    final updates = <Task>[];
+    final changes = <LearningEvent>[];
+    final expected = <String, DateTime>{};
+    for (final id in taskIds.toSet()) {
+      final task = await store.getTask(id);
+      if (task == null || task.status != TaskStatus.pending)
+        throw StateError('只能延后未完成任务');
+      final plan = await store.getPlan(task.planId);
+      if (plan == null || plan.paused) throw StateError('计划不存在或已暂停');
+      final local = localTime(now, plan.timeZone);
+      final today = DateTime(local.year, local.month, local.day);
+      if (!date.isAfter(today) || !date.isAfter(task.dueDate)) {
+        throw ArgumentError('延期日期必须晚于今天和当前任务日期');
+      }
+      expected[id] = task.dueDate;
+      updates.add(task.copyWith(dueDate: date));
+      changes.add(LearningEvent(
+          id: _id(),
+          type: LearningEventType.taskRescheduled,
+          occurredAt: now,
+          timeZone: plan.timeZone,
+          durationSeconds: 0,
+          taskId: id,
+          segmentId: task.segmentId,
+          taskKind: task.kind,
+          dueDate: date,
+          previousDueDate: task.dueDate));
+    }
+    if (updates.isEmpty) return 0;
+    await store.writeBatch(RecitationBatch(
+        tasks: updates,
+        events: changes,
+        expectedTaskDueDates: expected,
+        reschedulesPendingTasks: true));
+    return updates.length;
+  }
+
+  Future<void> undoPostponement(String eventId) async {
+    final events = await store.events();
+    LearningEvent? original;
+    for (final event in events) {
+      if (event.id == eventId) original = event;
+    }
+    if (original == null ||
+        original.type != LearningEventType.taskRescheduled ||
+        original.previousDueDate == null ||
+        original.taskId == null ||
+        original.undoOf != null) {
+      throw StateError('这条延期记录不能撤销');
+    }
+    LearningEvent? latest;
+    for (final event in events) {
+      if (event.taskId == original.taskId &&
+          event.type == LearningEventType.taskRescheduled &&
+          (latest == null || !event.occurredAt.isBefore(latest.occurredAt)))
+        latest = event;
+    }
+    if (latest?.id != original.id) throw StateError('任务已经再次调整，不能撤销旧记录');
+    final task = await store.getTask(original.taskId!);
+    if (task == null ||
+        task.status != TaskStatus.pending ||
+        task.dueDate != original.dueDate) {
+      throw StateError('任务已完成或排期已变化，不能撤销');
+    }
+    final plan = await store.getPlan(task.planId);
+    if (plan == null || plan.paused) throw StateError('计划不存在或已暂停');
+    final restored = task.copyWith(dueDate: original.previousDueDate);
+    await store.writeBatch(RecitationBatch(tasks: [
+      restored
+    ], events: [
+      LearningEvent(
+          id: _id(),
+          type: LearningEventType.taskRescheduled,
+          occurredAt: _clock().toUtc(),
+          timeZone: plan.timeZone,
+          durationSeconds: 0,
+          taskId: task.id,
+          segmentId: task.segmentId,
+          taskKind: task.kind,
+          dueDate: restored.dueDate,
+          previousDueDate: task.dueDate,
+          undoOf: original.id)
+    ], expectedTaskDueDates: {
+      task.id: task.dueDate
+    }, expectedRescheduleIds: {
+      task.id: original.id
+    }, reschedulesPendingTasks: true));
   }
 
   Future<Article> updateArticle({

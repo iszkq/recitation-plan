@@ -9,6 +9,8 @@
 - [正式产品实施计划](product/IMPLEMENTATION_PLAN.md)
 - [正式产品核心层](product/core/)
 - [Flutter App](product/app/)
+- [延期撤销与提醒验收](docs/延期撤销与提醒验收.md)
+- [真机覆盖升级验收](docs/真机覆盖升级验收.md)
 - [GitHub 构建与安装](docs/GitHub构建与安装.md)
 - [关键页面展示板](ui/index.html?mode=gallery)
 - `output/ui/`：导出的界面图与展示板
@@ -20,7 +22,7 @@ Dart SDK 已安装在工作区 `.tools/dart-sdk`，无需修改全局 PATH。复
 
 Flutter 工具链位于 `.tools/flutter`。GitHub Actions 已完成核心测试、App 检查及 macOS 未签名 iOS 构建。Windows 本地不能验证 iOS 签名，未签名产物不能直接安装到 iPhone。
 
-计划支持多篇文章、暂停/继续和灵活排期。今日队列清空后，可从“提前学习”选择明天或后天的新背任务；文字和语音考核均按原门槛通过后完成，复习从实际通过当天计算。今日剩余任务可一次延至明天，与明天原任务合并，保留原定日期及调整历史。复习仅在到期后考核。恢复到前台和跨日自动刷新任务。仓库：https://github.com/iszkq/recitation-plan 。Actions 成功后产出需自行签名的 `recitation-plan-unsigned.ipa`。
+计划支持多篇文章、暂停/继续和灵活排期。今日队列清空后，可从“提前学习”选择明天或后天的新背任务；文字和语音考核均按原门槛通过后完成，复习从实际通过当天计算。今日剩余任务可一次延至明天，或为单项/批量选择更晚日期；保存前显示目标日工作量。未完成任务可撤销最近一次延期，保留原定日期及调整历史。iPhone 可开启本地学习及每周备份提醒，默认关闭。复习仅在到期后考核。恢复到前台和跨日自动刷新任务。仓库：https://github.com/iszkq/recitation-plan 。Actions 成功后产出需自行签名的 `recitation-plan-unsigned.ipa`。
 
 预览方式：在当前目录启动本地静态服务器，然后打开 `/ui/index.html`。无外部前端依赖，无网络字体。也可直接打开 HTML 使用原型功能。
 

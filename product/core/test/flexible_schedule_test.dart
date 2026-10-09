@@ -228,4 +228,141 @@ void main() {
     expect(
         moved.dueTasks, 2); // October 9 new learning and its first review only.
   });
+  test('自选日期单项延期和撤销保留原排期，成绩与报告不虚增', () async {
+    final tasks = await arrange();
+    await service.postponeTasks([tasks.first.id], DateTime(2026, 11, 2, 20));
+    expect(
+        (await store.getTask(tasks.first.id))!.dueDate, DateTime(2026, 11, 2));
+    expect((await store.getTask(tasks[1].id))!.dueDate, tasks[1].dueDate);
+    final event = (await store.events()).last;
+    expect(event.previousDueDate, tasks.first.dueDate);
+    final moved = buildReport(
+        period: ReportPeriod.month,
+        anchor: DateTime(2026, 10, 8),
+        asOf: DateTime(2026, 10, 8),
+        events: await store.events(),
+        localDate: eventLocalTime);
+    expect(moved.dueTasks, 0);
+    await service.undoPostponement(event.id);
+    final current = (await store.getTask(tasks.first.id))!;
+    expect(current.dueDate, tasks.first.dueDate);
+    expect(current.scheduledDate, tasks.first.dueDate);
+    expect(current.status, TaskStatus.pending);
+    final history = await store.events();
+    expect(history.last.undoOf, event.id);
+    final report = buildReport(
+        period: ReportPeriod.month,
+        anchor: DateTime(2026, 10, 8),
+        asOf: DateTime(2026, 10, 8),
+        events: history,
+        localDate: eventLocalTime);
+    expect(report.dueTasks, 1);
+    expect(report.completedTasks, 0);
+    expect(report.newMasteredSegments, 0);
+    expect(report.focusMinutes, 0);
+    await expectLater(service.undoPostponement(event.id), throwsStateError);
+    await expectLater(
+        service.undoPostponement(history.last.id), throwsStateError);
+  });
+
+  test('整批自选延期失败不部分保存；未来任务必须延到更晚日期', () async {
+    final tasks = await arrange();
+    final before = store.snapshot();
+    await expectLater(
+        service.postponeTasks(
+            [tasks.first.id, tasks[2].id], DateTime(2026, 10, 10)),
+        throwsArgumentError);
+    expect(store.snapshot(), before);
+    await expectLater(
+        service
+            .postponeTasks([tasks.first.id, 'missing'], DateTime(2026, 11, 1)),
+        throwsStateError);
+    expect(store.snapshot(), before);
+    await expectLater(
+        service.postponeTasks([tasks.first.id], DateTime(2026, 10, 8)),
+        throwsArgumentError);
+    await service
+        .postponeTasks([tasks[2].id, tasks[2].id], DateTime(2026, 11, 1));
+    expect((await store.getTask(tasks[2].id))!.scheduledDate, tasks[2].dueDate);
+    final event = (await store.events()).last;
+    await service.setPlanPaused(tasks.first.planId, true);
+    await expectLater(service.undoPostponement(event.id), throwsStateError);
+    await expectLater(
+        service.postponeTasks([tasks.first.id], DateTime(2026, 11, 1)),
+        throwsStateError);
+    await service.setPlanPaused(tasks.first.planId, false);
+    await pass(tasks.first, 'completed');
+    await expectLater(
+        service.postponeTasks([tasks.first.id], DateTime(2026, 11, 1)),
+        throwsStateError);
+  });
+
+  test('相同时间连续延期只允许撤销最近一次，撤销不复活更早记录', () async {
+    final tasks = await arrange();
+    await service.postponeTasks([tasks.first.id], DateTime(2026, 10, 9));
+    final first = (await store.events()).last;
+    await service.postponeTasks([tasks.first.id], DateTime(2026, 10, 12));
+    final latest = (await store.events()).last;
+    await expectLater(service.undoPostponement(first.id), throwsStateError);
+    await service.undoPostponement(latest.id);
+    expect(
+        (await store.getTask(tasks.first.id))!.dueDate, DateTime(2026, 10, 9));
+    await expectLater(service.undoPostponement(first.id), throwsStateError);
+    await expectLater(
+        store.writeBatch(RecitationBatch(
+            tasks: [tasks.first],
+            expectedTaskDueDates: {tasks.first.id: DateTime(2026, 10, 9)},
+            expectedRescheduleIds: {tasks.first.id: first.id},
+            reschedulesPendingTasks: true)),
+        throwsStateError);
+  });
+
+  test('并发撤销只有一次成功，备份恢复保存撤销关系且不伪造通过', () async {
+    final tasks = await arrange();
+    await service.postponeTasks([tasks.first.id], DateTime(2026, 11, 1));
+    final event = (await store.events()).last;
+    final results = await Future.wait(List.generate(2, (_) async {
+      try {
+        await service.undoPostponement(event.id);
+        return true;
+      } on StateError {
+        return false;
+      }
+    }));
+    expect(results.where((v) => v), hasLength(1));
+    final restored = MemoryRecitationStore();
+    await BackupService(restored, profileId: 'restored').restore(
+        BackupService(store, profileId: 'local').export(),
+        saveCurrentArchive: (_) async {});
+    expect((await restored.events()).where((e) => e.undoOf == event.id),
+        hasLength(1));
+    expect(
+        (await restored.getTask(tasks.first.id))!.dueDate, tasks.first.dueDate);
+    expect(await restored.attemptsForSegment(tasks.first.segmentId), isEmpty);
+    await expectLater(
+        RecitationService(restored, clock: () => now)
+            .undoPostponement(event.id),
+        throwsStateError);
+  });
+
+  test('旧版无来源日期的记录无法撤销，完成后的延期记录无法撤销', () async {
+    final tasks = await arrange();
+    await store.writeBatch(RecitationBatch(events: [
+      LearningEvent(
+          id: 'legacy',
+          type: LearningEventType.taskRescheduled,
+          occurredAt: now,
+          timeZone: 'Asia/Shanghai',
+          durationSeconds: 0,
+          taskId: tasks.first.id,
+          dueDate: DateTime(2026, 10, 9))
+    ]));
+    await expectLater(service.undoPostponement('legacy'), throwsStateError);
+    await service.postponeTasks([tasks.first.id], DateTime(2026, 10, 9));
+    final event = (await store.events()).last;
+    now = DateTime.utc(2026, 10, 9, 4);
+    await pass(tasks.first, 'passed-later');
+    await expectLater(service.undoPostponement(event.id), throwsStateError);
+    expect((await store.getTask(tasks.first.id))!.status, TaskStatus.completed);
+  });
 }

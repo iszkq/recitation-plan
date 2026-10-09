@@ -250,4 +250,20 @@ void main() {
     await box.close();
     store = await HiveRecitationStore.open(directory.path);
   });
+  test('自选延期和撤销关系持久化，重开后可继续撤销且不能撤销两次', () async {
+    final task = await arrange();
+    await service.postponeTasks([task.id], DateTime(2026, 11, 2));
+    final original = (await store.events()).last;
+    await store.close();
+    store = await HiveRecitationStore.open(directory.path);
+    service = RecitationService(store, clock: () => now);
+    expect((await store.events()).last.previousDueDate, task.dueDate);
+    await service.undoPostponement(original.id);
+    await store.close();
+    store = await HiveRecitationStore.open(directory.path);
+    service = RecitationService(store, clock: () => now);
+    expect((await store.events()).last.undoOf, original.id);
+    expect((await store.getTask(task.id))!.dueDate, task.dueDate);
+    await expectLater(service.undoPostponement(original.id), throwsStateError);
+  });
 }

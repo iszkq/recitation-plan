@@ -183,6 +183,9 @@ class EntityCodec {
         'status': e.status?.name,
         'taskKind': e.taskKind?.name,
         if (e.dueDate != null) 'dueDate': day(e.dueDate!),
+        if (e.previousDueDate != null)
+          'previousDueDate': day(e.previousDueDate!),
+        if (e.undoOf != null) 'undoOf': e.undoOf,
       };
   static LearningEvent readEvent(JsonObject j) => LearningEvent(
         id: j['id'],
@@ -203,5 +206,8 @@ class EntityCodec {
             ? null
             : TaskKind.values.byName(j['taskKind']),
         dueDate: j['dueDate'] == null ? null : readDay(j['dueDate']),
+        previousDueDate:
+            j['previousDueDate'] == null ? null : readDay(j['previousDueDate']),
+        undoOf: j['undoOf'] as String?,
       );
 }

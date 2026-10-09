@@ -11,6 +11,7 @@ class RecitationBatch {
       this.events = const [],
       this.finalizesAttemptId,
       this.expectedTaskDueDates = const {},
+      this.expectedRescheduleIds = const {},
       this.reschedulesPendingTasks = false});
   final List<Article> articles;
   final List<ArticleVersion> versions;
@@ -24,6 +25,7 @@ class RecitationBatch {
 
   /// Checked inside the serialized write, before publishing any changes.
   final Map<String, DateTime> expectedTaskDueDates;
+  final Map<String, String?> expectedRescheduleIds;
   final bool reschedulesPendingTasks;
 }
 

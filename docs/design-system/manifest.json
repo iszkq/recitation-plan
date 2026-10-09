@@ -19,7 +19,8 @@
       "校对并达标打卡",
       "间隔复习",
       "本机档案与可选账户备份",
-      "周报、月报与年报"
+      "周报、月报与年报",
+      "单项延期、选择日期与撤销；学习和备份提醒"
     ]
   },
   "sources": {
@@ -166,6 +167,38 @@
         "识别待确认"
       ],
       "textLabelRequired": true
+    },
+    "PickerSheet": {
+      "height": 330,
+      "actions": [
+        "取消",
+        "确定"
+      ],
+      "controls": [
+        "日期",
+        "时间"
+      ],
+      "safeArea": true
+    },
+    "PostponementSummary": {
+      "fields": [
+        "原日期",
+        "目标日期",
+        "原有任务数",
+        "移入任务数",
+        "合计任务数"
+      ],
+      "undo": "最近一次且任务未完成"
+    },
+    "ReminderSettings": {
+      "controls": [
+        "学习提醒",
+        "每周备份提醒",
+        "北京时间",
+        "刷新提醒状态"
+      ],
+      "permission": "用户开启时申请",
+      "defaultEnabled": false
     }
   },
   "layout": {

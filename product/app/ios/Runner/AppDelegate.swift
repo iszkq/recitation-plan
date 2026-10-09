@@ -2,6 +2,7 @@ import Flutter
 import UIKit
 import Speech
 import AVFoundation
+import UserNotifications
 
 final class RecitationSpeechBridge: NSObject, FlutterStreamHandler {
   private var sink: FlutterEventSink?
@@ -211,6 +212,7 @@ final class RecitationSpeechBridge: NSObject, FlutterStreamHandler {
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private let speech = RecitationSpeechBridge()
+  private let reminders = RecitationReminderBridge()
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -221,5 +223,88 @@ final class RecitationSpeechBridge: NSObject, FlutterStreamHandler {
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     speech.register(on: engineBridge.applicationRegistrar.messenger())
+    reminders.register(on: engineBridge.applicationRegistrar.messenger())
+  }
+}
+
+final class RecitationReminderBridge {
+  private let center = UNUserNotificationCenter.current()
+
+  func register(on messenger: FlutterBinaryMessenger) {
+    let channel = FlutterMethodChannel(name: "recitation/reminders", binaryMessenger: messenger)
+    channel.setMethodCallHandler { [weak self] call, result in
+      guard let self else { return }
+      switch call.method {
+      case "status":
+        self.center.getNotificationSettings { settings in
+          DispatchQueue.main.async { result(self.status(settings.authorizationStatus)) }
+        }
+      case "requestPermission":
+        self.center.requestAuthorization(options: [.alert, .sound]) { _, error in
+          if let error {
+            DispatchQueue.main.async { result(FlutterError(code: "PERMISSION", message: error.localizedDescription, details: nil)) }
+            return
+          }
+          self.center.getNotificationSettings { settings in
+            DispatchQueue.main.async { result(self.status(settings.authorizationStatus)) }
+          }
+        }
+      case "replace": self.replace(call.arguments, result: result)
+      default: result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+
+  private func status(_ status: UNAuthorizationStatus) -> String {
+    switch status {
+    case .authorized, .provisional, .ephemeral: return "allowed"
+    case .denied: return "denied"
+    default: return "notRequested"
+    }
+  }
+
+  private func replace(_ raw: Any?, result: @escaping FlutterResult) {
+    guard let entries = raw as? [[String: Any]], entries.count <= 31 else {
+      result(FlutterError(code: "INVALID", message: "提醒安排无效", details: nil)); return
+    }
+    var requests: [UNNotificationRequest] = []
+    var ids = Set<String>()
+    for entry in entries {
+      guard let id = entry["id"] as? String, id.hasPrefix("recitation."), ids.insert(id).inserted,
+            let milliseconds = entry["at"] as? NSNumber,
+            let title = entry["title"] as? String, let body = entry["body"] as? String else {
+        result(FlutterError(code: "INVALID", message: "提醒内容无效", details: nil)); return
+      }
+      let date = Date(timeIntervalSince1970: milliseconds.doubleValue / 1000)
+      guard date > Date() else { continue }
+      let content = UNMutableNotificationContent()
+      content.title = title; content.body = body; content.sound = .default
+      var calendar = Calendar(identifier: .gregorian)
+      calendar.timeZone = TimeZone(identifier: "Asia/Shanghai")!
+      var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
+      components.timeZone = calendar.timeZone
+      let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+      requests.append(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
+    }
+    self.center.getPendingNotificationRequests { pending in
+      DispatchQueue.main.async {
+        self.center.removePendingNotificationRequests(withIdentifiers: pending.filter { $0.identifier.hasPrefix("recitation.") }.map { $0.identifier })
+        self.center.getDeliveredNotifications { delivered in
+          self.center.removeDeliveredNotifications(withIdentifiers: delivered.filter { $0.request.identifier.hasPrefix("recitation.") }.map { $0.request.identifier })
+        }
+        let group = DispatchGroup()
+        var failure: Error?
+        for request in requests {
+          group.enter()
+          self.center.add(request) { error in
+            DispatchQueue.main.async { if let error { failure = error }; group.leave() }
+          }
+        }
+        group.notify(queue: .main) {
+          if let failure { result(FlutterError(code: "SCHEDULE", message: failure.localizedDescription, details: nil)) }
+          else { result(nil) }
+        }
+      }
+    }
   }
 }

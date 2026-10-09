@@ -41,3 +41,9 @@
 语音考核使用计时和状态文字表示录音，不使用伪造百分比进度；最终化显示加载态并禁止重复提交。录音退出需确认，权限失败可重试，中断与自动通过分别记账。
 
 文库复用系统搜索框、分段筛选和带进度的文章列表项；作者、节数和掌握数均来自本机档案。编辑后的新版本进度独立计算，搜索无结果和筛选空结果有明确提示。
+
+## 0.2.3 扩展
+
+Flutter 的 PickerSheet 共用于日期与提醒时间，330pt 高度集中定义于 Design；PostponePage 复用 DetailRow、CardSection、PrimaryAction，显示工作量后确认。PostponementHistoryPage 显示前后日期和撤销状态，仅最近一次未完成任务可撤销。CompletionFeedback 仅在已保存的无辅助自动通过后显示完成和下次复习。ReminderSettingsPage 复用 CupertinoSwitch，每个开关有中文语义标签；默认关闭，申请失败不启用。页面和弹窗支持 320pt/1.5 倍字号回归。
+
+延期历史的 DetailRow 使用可变高度完整副说明，关键日期与撤销状态不受默认三行摘要限制；窄屏大字体按内容换行。

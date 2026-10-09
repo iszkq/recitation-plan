@@ -9,3 +9,6 @@
   --chart-height:96px; --chart-column-width:54px; --chart-bar-width:22px;
   --touch:44px; --primary-height:52px; --feedback:120ms; --transition:200ms;
 }
+
+/* 0.2.3: 日期与提醒时间共用系统底部选择器；Flutter Design 映射。 */
+:root { --picker-sheet-height: 330px; }

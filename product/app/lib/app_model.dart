@@ -1,10 +1,107 @@
 import 'package:flutter/foundation.dart';
 import 'package:recitation_core/recitation_core.dart';
 
+import 'reminders.dart';
+
 class AppModel extends ChangeNotifier {
-  AppModel(this.store) : service = RecitationService(store);
+  AppModel(
+    this.store, {
+    PreferencesStore? preferencesStore,
+    ReminderProvider? reminderProvider,
+    DateTime Function()? clock,
+  }) : clock = clock ?? DateTime.now,
+       service = RecitationService(store, clock: clock),
+       preferencesStore = preferencesStore ?? MemoryPreferencesStore(),
+       reminderProvider = reminderProvider ?? UnavailableReminderProvider();
   final MemoryRecitationStore store;
   final RecitationService service;
+  final DateTime Function() clock;
+  final PreferencesStore preferencesStore;
+  final ReminderProvider reminderProvider;
+  ReminderPreferences preferences = const ReminderPreferences();
+  ReminderPermission reminderPermission = ReminderPermission.unavailable;
+  String? reminderError;
+  String? preferencesError;
+  Future<void>? _preferencesLoaded;
+  Future<void> _settingsTail = Future.value();
+  Future<void> _reminderTail = Future.value();
+
+  Future<void> initializePreferences() => _preferencesLoaded ??= () async {
+    try {
+      preferences = await preferencesStore.read();
+      if (preferences.firstOpenedAt == null) {
+        preferences = preferences.copyWith(firstOpenedAt: clock().toUtc());
+        await preferencesStore.write(preferences);
+      }
+    } catch (_) {
+      preferencesError = '提醒设置读取失败，原学习档案未修改。请重新保存提醒设置。';
+    }
+  }();
+
+  Future<void> syncReminders() {
+    final operation = _reminderTail.then((_) async {
+      try {
+        reminderPermission = await reminderProvider.permission();
+        await reminderProvider.replace(
+          reminderPermission == ReminderPermission.allowed
+              ? buildReminders(
+                  preferences: preferences,
+                  now: clock().toUtc(),
+                  tasks: tasks,
+                  plans: plans,
+                  hasContent: articles.isNotEmpty || attempts.isNotEmpty,
+                )
+              : [],
+        );
+        reminderError = null;
+      } catch (_) {
+        reminderError = '提醒更新失败，请在提醒设置中重试。学习记录已保存。';
+      }
+    });
+    _reminderTail = operation;
+    return operation;
+  }
+
+  Future<void> savePreferences({
+    bool? studyEnabled,
+    bool? backupEnabled,
+    int? hour,
+    int? minute,
+    bool exported = false,
+  }) {
+    final operation = _settingsTail.then((_) async {
+      await initializePreferences();
+      final next = preferences.copyWith(
+        studyEnabled: studyEnabled,
+        backupEnabled: backupEnabled,
+        hour: hour,
+        minute: minute,
+        lastExportAt: exported ? clock().toUtc() : null,
+        firstOpenedAt: preferences.firstOpenedAt ?? clock().toUtc(),
+      );
+      await preferencesStore.write(next);
+      preferences = next;
+      preferencesError = null;
+      await syncReminders();
+      notifyListeners();
+    });
+    _settingsTail = operation.then<void>(
+      (_) {},
+      onError: (Object e, StackTrace s) {},
+    );
+    return operation;
+  }
+
+  bool get backupDue {
+    final base = preferences.lastExportAt ?? preferences.firstOpenedAt;
+    final localBase = base == null ? null : localTime(base, 'Asia/Shanghai');
+    return (articles.isNotEmpty || attempts.isNotEmpty) &&
+        base != null &&
+        !today.isBefore(
+          DateTime(localBase!.year, localBase.month, localBase.day + 7),
+        );
+  }
+
   List<Article> articles = [];
   List<Plan> plans = [];
   List<Task> tasks = [];
@@ -14,11 +111,12 @@ class AppModel extends ChangeNotifier {
   Map<String, String> segmentArticleIds = {};
   List<Attempt> attempts = [];
   DateTime get today {
-    final local = localTime(DateTime.now().toUtc(), 'Asia/Shanghai');
+    final local = localTime(clock().toUtc(), 'Asia/Shanghai');
     return DateTime(local.year, local.month, local.day);
   }
 
   Future<void> reload() async {
+    await initializePreferences();
     articles = await store.articles();
     plans = await store.plans();
     tasks = await store.tasks();
@@ -53,6 +151,7 @@ class AppModel extends ChangeNotifier {
         if (a.id == v?.articleId) articleNames[s.id] = a.title;
       }
     }
+    await syncReminders();
     notifyListeners();
   }
 
@@ -122,16 +221,53 @@ class AppModel extends ChangeNotifier {
     return '待完成';
   }
 
+  int pendingOn(DateTime date, {Set<String> excluding = const {}}) => tasks
+      .where(
+        (t) =>
+            t.dueDate == date &&
+            t.status == TaskStatus.pending &&
+            !excluding.contains(t.id) &&
+            plans.any((p) => p.id == t.planId && !p.paused),
+      )
+      .length;
+
+  bool canUndoPostponement(LearningEvent event) {
+    if (event.previousDueDate == null || event.undoOf != null) return false;
+    final matches = tasks.where((t) => t.id == event.taskId);
+    if (matches.isEmpty ||
+        matches.first.status != TaskStatus.pending ||
+        matches.first.dueDate != event.dueDate ||
+        !plans.any((p) => p.id == matches.first.planId && !p.paused)) {
+      return false;
+    }
+    return latestReschedule(event.taskId!)?.id == event.id;
+  }
+
+  LearningEvent? latestReschedule(String taskId) {
+    LearningEvent? latest;
+    for (final e in events) {
+      if (e.taskId == taskId &&
+          e.type == LearningEventType.taskRescheduled &&
+          (latest == null || !e.occurredAt.isBefore(latest.occurredAt))) {
+        latest = e;
+      }
+    }
+    return latest;
+  }
+
   int get postponedToday => tasks
       .where(
         (task) =>
             task.status == TaskStatus.pending &&
-            task.dueDate == DateTime(today.year, today.month, today.day + 1) &&
+            task.dueDate.isAfter(today) &&
+            !task.scheduledDate.isAfter(today) &&
             events.any((event) {
               final local = eventLocalTime(event);
               return event.type == LearningEventType.taskRescheduled &&
                   event.taskId == task.id &&
                   event.dueDate == task.dueDate &&
+                  event.undoOf == null &&
+                  latestReschedule(task.id)?.id == event.id &&
                   DateTime(local.year, local.month, local.day) == today;
             }) &&
             plans.any((p) => p.id == task.planId && !p.paused),

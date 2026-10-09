@@ -7,13 +7,22 @@ import 'package:recitation_core/recitation_core.dart';
 import 'app.dart';
 import 'app_model.dart';
 import 'design.dart';
+import 'reminders.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
     final root = await getApplicationDocumentsDirectory();
     final store = await HiveRecitationStore.open('${root.path}/recitation');
-    final model = AppModel(store);
+    final model = AppModel(
+      store,
+      preferencesStore: FilePreferencesStore(
+        File('${root.path}/recitation/reminders.json'),
+      ),
+      reminderProvider: Platform.isIOS
+          ? IosReminderProvider()
+          : UnavailableReminderProvider(),
+    );
     await model.reload();
     runApp(RecitationApp(model: model));
   } catch (error) {

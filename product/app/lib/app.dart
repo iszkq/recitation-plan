@@ -13,6 +13,8 @@ import 'package:recitation_core/recitation_core.dart';
 import 'app_model.dart';
 import 'design.dart';
 import 'speech.dart';
+import 'plan_adjustments.dart';
+import 'reminder_settings.dart';
 
 class RecitationApp extends StatelessWidget {
   const RecitationApp({super.key, required this.model});
@@ -133,7 +135,7 @@ class _TodayPageState extends State<TodayPage> {
     final accepted = await confirm(
       context,
       '将剩余任务延至明天？',
-      '${ids.length}个未完成任务将并入明天，明天原有任务继续保留。',
+      '明天原有 ${model.pendingOn(DateTime(model.today.year, model.today.month, model.today.day + 1))} 个未完成任务，移入 ${ids.length} 个后共 ${model.pendingOn(DateTime(model.today.year, model.today.month, model.today.day + 1)) + ids.length} 个。',
       action: '延至明天',
     );
     if (!accepted || !mounted) return;
@@ -183,7 +185,7 @@ class _TodayPageState extends State<TodayPage> {
                   Text(
                     tasks.isEmpty
                         ? (postponed > 0
-                              ? '剩余任务已延至明天'
+                              ? '剩余任务已延期'
                               : total == 0
                               ? '今天安排什么？'
                               : '今天的任务完成了')
@@ -246,6 +248,16 @@ class _TodayPageState extends State<TodayPage> {
                       child: postponing
                           ? const CupertinoActivityIndicator()
                           : const Text('将剩余任务延至明天'),
+                    ),
+                    CupertinoButton(
+                      onPressed: postponing
+                          ? null
+                          : () => openPostponement(
+                              context,
+                              model,
+                              tasks.map((t) => t.id).toList(),
+                            ),
+                      child: const Text('选择其他延期日期'),
                     ),
                     const Padding(
                       padding: EdgeInsets.only(top: 20, bottom: 10),
@@ -339,6 +351,22 @@ class _TodayPageState extends State<TodayPage> {
                           Navigator.of(context, rootNavigator: true).push(
                             CupertinoPageRoute(
                               builder: (_) => UpcomingTasksPage(model: model),
+                            ),
+                          ),
+                    ),
+                  if (model.events.any(
+                    (e) => e.type == LearningEventType.taskRescheduled,
+                  ))
+                    DetailRow(
+                      inset: false,
+                      title: '延期记录',
+                      subtitle: '查看调整或撤销最近一次延期',
+                      icon: CupertinoIcons.clock,
+                      onTap: () =>
+                          Navigator.of(context, rootNavigator: true).push(
+                            CupertinoPageRoute(
+                              builder: (_) =>
+                                  PostponementHistoryPage(model: model),
                             ),
                           ),
                     ),
@@ -1314,6 +1342,13 @@ class TaskReadingPage extends StatelessWidget {
           Text(model.taskTitle(task), style: Design.heading),
           if (allowEarly)
             Text('提前新背 · 原定${dateLabel(task.dueDate)}', style: Design.caption),
+          CupertinoButton(
+            onPressed: () async {
+              final saved = await openPostponement(context, model, [task.id]);
+              if (saved == true && context.mounted) Navigator.pop(context);
+            },
+            child: const Text('延后这项任务'),
+          ),
           const SizedBox(height: 12),
           CardSection(
             padding: const EdgeInsets.all(16),
@@ -1559,7 +1594,7 @@ class PlanDetailPage extends StatelessWidget {
                 ],
               ),
             ),
-            for (final task in tasks)
+            for (final task in tasks) ...[
               DetailRow(
                 title: model.taskTitle(task),
                 subtitle:
@@ -1581,6 +1616,14 @@ class PlanDetailPage extends StatelessWidget {
                       )
                     : null,
               ),
+              if (task.status == TaskStatus.pending && !current.paused)
+                CupertinoButton(
+                  onPressed: () => openPostponement(context, model, [task.id]),
+                  child: Text(
+                    '调整第${(model.segments[task.segmentId]?.order ?? 0) + 1}节的日期',
+                  ),
+                ),
+            ],
           ],
         ),
       ),
@@ -2469,6 +2512,11 @@ class _SpeechAssessmentPageState extends State<SpeechAssessmentPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                CompletionFeedback(
+                  model: widget.model,
+                  task: widget.task,
+                  attempt: result!,
+                ),
                 Text(
                   '原文：${widget.model.segments[widget.task.segmentId]?.text ?? ''}',
                   style: Design.reading,
@@ -2646,6 +2694,11 @@ class _TextAssessmentPageState extends State<TextAssessmentPage>
                 ),
               ),
               const SizedBox(height: 16),
+              CompletionFeedback(
+                model: widget.model,
+                task: widget.task,
+                attempt: result!,
+              ),
               Text('原文：${segment?.text ?? ''}', style: Design.reading),
               const SizedBox(height: 16),
               Text('你的背诵：${result!.transcript ?? ''}', style: Design.reading),
@@ -2758,10 +2811,21 @@ class ProfilePage extends StatelessWidget {
             DetailRow(
               inset: false,
               title: '备份与恢复',
-              subtitle: '导出或恢复本机学习档案',
+              subtitle: model.backupDue ? '已超过七天，建议导出一份档案' : '导出或恢复本机学习档案',
               icon: CupertinoIcons.archivebox,
               onTap: () => Navigator.of(context, rootNavigator: true).push(
                 CupertinoPageRoute(builder: (_) => BackupPage(model: model)),
+              ),
+            ),
+            DetailRow(
+              inset: false,
+              title: '提醒设置',
+              subtitle: '学习时间与每周备份提醒',
+              icon: CupertinoIcons.bell,
+              onTap: () => Navigator.of(context, rootNavigator: true).push(
+                CupertinoPageRoute(
+                  builder: (_) => ReminderSettingsPage(model: model),
+                ),
               ),
             ),
           ],
@@ -3047,8 +3111,10 @@ class ReportActivityChart extends StatelessWidget {
 }
 
 class BackupPage extends StatefulWidget {
-  const BackupPage({super.key, required this.model});
+  const BackupPage({super.key, required this.model, this.exportArchive});
   final AppModel model;
+  final Future<ShareResult> Function(String archive, Rect? origin)?
+  exportArchive;
   @override
   State<BackupPage> createState() => _BackupPageState();
 }
@@ -3057,25 +3123,36 @@ class _BackupPageState extends State<BackupPage> {
   bool busy = false;
   BackupService get backup =>
       BackupService(widget.model.store, profileId: 'local-profile');
+  Future<ShareResult> shareArchive(String archive, Rect? origin) async {
+    final root = await getTemporaryDirectory();
+    final file = File(
+      '${root.path}/recitation-backup-${DateTime.now().millisecondsSinceEpoch}.json',
+    );
+    await file.writeAsString(archive, flush: true);
+    if (!mounted) return const ShareResult('', ShareResultStatus.dismissed);
+    return SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(file.path, mimeType: 'application/json')],
+        text: '背诵计划学习档案',
+        sharePositionOrigin: origin,
+      ),
+    );
+  }
+
   Future<void> export() async {
     setState(() => busy = true);
     try {
-      final root = await getTemporaryDirectory();
-      final file = File(
-        '${root.path}/recitation-backup-${DateTime.now().millisecondsSinceEpoch}.json',
-      );
-      await file.writeAsString(backup.export(), flush: true);
-      if (!mounted) return;
       final box = context.findRenderObject() as RenderBox?;
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(file.path, mimeType: 'application/json')],
-          text: '背诵计划学习档案',
-          sharePositionOrigin: box == null
-              ? null
-              : box.localToGlobal(Offset.zero) & box.size,
-        ),
+      final origin = box == null
+          ? null
+          : box.localToGlobal(Offset.zero) & box.size;
+      final shared = await (widget.exportArchive ?? shareArchive)(
+        backup.export(),
+        origin,
       );
+      if (shared.status == ShareResultStatus.success) {
+        await widget.model.savePreferences(exported: true);
+      }
     } catch (e) {
       if (mounted) await showError(context, e);
     } finally {
@@ -3154,6 +3231,12 @@ class _BackupPageState extends State<BackupPage> {
         padding: const EdgeInsets.all(Design.inset),
         children: [
           const Text('保存每一次积累', style: Design.heading),
+          Text(
+            widget.model.preferences.lastExportAt == null
+                ? '还没有成功导出记录'
+                : '上次导出：${dateLabel(localTime(widget.model.preferences.lastExportAt!, 'Asia/Shanghai'))}',
+            style: Design.caption,
+          ),
           const SizedBox(height: Design.gap),
           const Text(
             '档案包含文章、计划、成绩和复习记录，不包含录音。可通过系统分享保存到文件。',

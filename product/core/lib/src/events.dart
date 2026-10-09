@@ -24,6 +24,8 @@ class LearningEvent {
     this.status,
     this.taskKind,
     this.dueDate,
+    this.previousDueDate,
+    this.undoOf,
   });
 
   final String id;
@@ -38,6 +40,8 @@ class LearningEvent {
   final AttemptStatus? status;
   final TaskKind? taskKind;
   final DateTime? dueDate;
+  final DateTime? previousDueDate;
+  final String? undoOf;
 
   bool get isValidDuration => durationSeconds > 0;
   bool get isAutomaticPass =>

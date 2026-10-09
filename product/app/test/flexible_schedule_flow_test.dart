@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:recitation_app/app.dart';
 import 'package:recitation_app/app_model.dart';
+import 'package:recitation_app/plan_adjustments.dart';
+import 'package:recitation_app/reminder_settings.dart';
 import 'package:recitation_core/recitation_core.dart';
 
 import 'product_surface_test.dart' show host;
@@ -60,6 +62,10 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     final model = await arrange();
+    await model.service.postponeTasks([
+      model.tasks.last.id,
+    ], DateTime(model.today.year, model.today.month, model.today.day + 5));
+    await model.reload();
     for (final width in [390.0, 320.0]) {
       tester.view.physicalSize = Size(width, 844);
       tester.view.devicePixelRatio = 1;
@@ -69,6 +75,12 @@ void main() {
       final pages = {
         'today-flexible': TodayPage(model: model),
         'upcoming-flexible': UpcomingTasksPage(model: model),
+        'postpone-custom': PostponePage(
+          model: model,
+          taskIds: [model.tasks.first.id],
+        ),
+        'postpone-history': PostponementHistoryPage(model: model),
+        'reminder-settings': ReminderSettingsPage(model: model),
       };
       for (final entry in pages.entries) {
         final boundary = GlobalKey();
@@ -81,6 +93,14 @@ void main() {
           isNull,
           reason: '${entry.key} at $width',
         );
+        if (entry.key == 'postpone-history') {
+          final text = tester.widget<Text>(find.textContaining('可撤销').last);
+          final paragraph = tester.renderObject<RenderParagraph>(
+            find.textContaining('可撤销').last,
+          );
+          expect(text.maxLines, isNull);
+          expect(paragraph.didExceedMaxLines, isFalse);
+        }
         if (capture) {
           final rendered =
               boundary.currentContext!.findRenderObject()!
@@ -171,7 +191,7 @@ void main() {
       (await model.store.getTask(original.id))!.status,
       TaskStatus.pending,
     );
-    expect(find.text('剩余任务已延至明天'), findsOneWidget);
+    expect(find.text('剩余任务已延期'), findsOneWidget);
     expect(find.text('今天的任务全部完成'), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
@@ -220,5 +240,103 @@ void main() {
     );
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
+  });
+  testWidgets('单项延期显示合并工作量，选择日期确认保存并退出旧阅读页', (tester) async {
+    final model = await arrange();
+    final task = model.dueTasks.single;
+    await tester.pumpWidget(
+      host(
+        Builder(
+          builder: (context) => CupertinoButton(
+            child: const Text('阅读'),
+            onPressed: () => Navigator.push(
+              context,
+              CupertinoPageRoute(
+                builder: (_) => TaskReadingPage(model: model, task: task),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('阅读'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('延后这项任务'));
+    await tester.pumpAndSettle();
+    expect(find.text('这天原有 1 个未完成任务，移入 1 个后共 2 个。'), findsOneWidget);
+    await tester.tap(find.text('延期日期'));
+    await tester.pumpAndSettle();
+    final picker = tester.widget<CupertinoDatePicker>(
+      find.byType(CupertinoDatePicker),
+    );
+    final chosen = DateTime(
+      model.today.year,
+      model.today.month,
+      model.today.day + 5,
+    );
+    picker.onDateTimeChanged(chosen);
+    await tester.tap(find.text('确定'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('保存延期'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('原有 0 个未完成任务'), findsWidgets);
+    await tester.tap(find.widgetWithText(CupertinoDialogAction, '保存延期'));
+    await tester.pumpAndSettle();
+    expect((await model.store.getTask(task.id))!.dueDate, chosen);
+    expect(find.text('准备背诵'), findsNothing);
+    expect(find.text('阅读'), findsOneWidget);
+    expect(model.postponedToday, 1);
+    await tester.pumpWidget(host(PostponementHistoryPage(model: model)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('可撤销').last);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('恢复后会回到今日队列'), findsOneWidget);
+    await tester.tap(find.widgetWithText(CupertinoDialogAction, '撤销延期'));
+    await tester.pumpAndSettle();
+    expect(model.dueTasks.single.id, task.id);
+    expect(model.postponedToday, 0);
+    expect(find.textContaining('已撤销'), findsOneWidget);
+  });
+
+  testWidgets('提前通过显示原定日期和实际首过生成的下次复习，辅助不显示完成', (tester) async {
+    final model = await arrange();
+    final todayTask = model.dueTasks.single;
+    await model.service.submitFinalTranscript(
+      taskId: todayTask.id,
+      attemptId: 'finish-today',
+      transcript: model.segments[todayTask.segmentId]!.text,
+      isFinal: true,
+    );
+    await model.reload();
+    final early = model
+        .upcomingTasks(1)
+        .firstWhere((t) => t.kind == TaskKind.newLearning);
+    final attempt = await model.service.submitFinalTranscript(
+      taskId: early.id,
+      attemptId: 'feedback',
+      transcript: model.segments[early.segmentId]!.text,
+      isFinal: true,
+      allowEarly: true,
+    );
+    await model.reload();
+    await tester.pumpWidget(
+      host(CompletionFeedback(model: model, task: early, attempt: attempt)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('到原定日期无需重做'), findsOneWidget);
+    expect(find.textContaining('下次复习'), findsOneWidget);
+    final assisted = await model.service.submitFinalTranscript(
+      taskId: early.id,
+      attemptId: 'assisted-feedback',
+      transcript: model.segments[early.segmentId]!.text,
+      isFinal: true,
+      allowEarly: true,
+      assisted: true,
+    );
+    await model.reload();
+    await tester.pumpWidget(
+      host(CompletionFeedback(model: model, task: early, attempt: assisted)),
+    );
+    expect(find.textContaining('到原定日期无需重做'), findsNothing);
   });
 }

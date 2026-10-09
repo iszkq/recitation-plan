@@ -59,6 +59,21 @@ class MemoryRecitationStore implements RecitationStore {
         entries[id] = value;
       }
 
+      for (final entry in batch.expectedRescheduleIds.entries) {
+        String? latest;
+        DateTime? latestAt;
+        for (final raw in (next['events'] as Map).values) {
+          if (raw['taskId'] != entry.key ||
+              raw['type'] != LearningEventType.taskRescheduled.name) continue;
+          final at = DateTime.parse(raw['occurredAt'] as String);
+          if (latestAt == null || !at.isBefore(latestAt)) {
+            latest = raw['id'] as String;
+            latestAt = at;
+          }
+        }
+        if (latest != entry.value) throw StateError('排期已更新，请刷新后重试');
+      }
+
       for (final a in batch.articles) {
         add('articles', EntityCodec.article(a));
       }
