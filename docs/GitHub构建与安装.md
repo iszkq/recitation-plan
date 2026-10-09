@@ -57,3 +57,7 @@
 支持单项/批量自选日期延期、撤销与工作量确认，自动通过后的提前完成及下次复习提示，iPhone 本地学习/每周备份提醒。提醒默认关闭，从“我的→提醒设置”开启；只在开启时申请系统权限。
 
 真实设备覆盖升级、通知和分享见 [真机验收步骤](真机覆盖升级验收.md)，自动验证与发布记录见 [延期撤销与提醒验收](延期撤销与提醒验收.md)。[下载0.2.3+5未签名IPA](https://github.com/iszkq/recitation-plan/actions/runs/37894173505/artifacts/11599442782)。[Actions 37894173505](https://github.com/iszkq/recitation-plan/actions/runs/37894173505) 的60项核心测试、27项Flutter测试和macOS iOS Release编译通过。SHA-256：`b3ed44ec3e310a19af339b06c581890a4fc9cff4c1e31741cfd16a923aa3d232`。
+
+## 0.2.4+6 构建中
+
+新增计划月历、剩余新背重新排期、积压复习分日处理和本机快照恢复。沿用 Bundle ID `cn.recitation.recitationApp`，iOS 15+，保持原安装身份覆盖升级。发布完成后在 [计划月历与本机快照验收](计划月历与本机快照验收.md) 记录本次提交对应的 Actions、产物及校验值。

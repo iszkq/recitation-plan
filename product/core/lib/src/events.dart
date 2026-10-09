@@ -10,6 +10,8 @@ enum LearningEventType {
   technicalFailure
 }
 
+enum ScheduleAdjustment { remainingPlan, reviewBacklog }
+
 class LearningEvent {
   const LearningEvent({
     required this.id,
@@ -26,6 +28,7 @@ class LearningEvent {
     this.dueDate,
     this.previousDueDate,
     this.undoOf,
+    this.adjustment,
   });
 
   final String id;
@@ -42,6 +45,7 @@ class LearningEvent {
   final DateTime? dueDate;
   final DateTime? previousDueDate;
   final String? undoOf;
+  final ScheduleAdjustment? adjustment;
 
   bool get isValidDuration => durationSeconds > 0;
   bool get isAutomaticPass =>

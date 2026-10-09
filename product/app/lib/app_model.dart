@@ -9,7 +9,10 @@ class AppModel extends ChangeNotifier {
     PreferencesStore? preferencesStore,
     ReminderProvider? reminderProvider,
     DateTime Function()? clock,
-  }) : clock = clock ?? DateTime.now,
+    LocalSnapshotRepository? snapshots,
+  }) : snapshots =
+           snapshots ?? (store is HiveRecitationStore ? store.snapshots : null),
+       clock = clock ?? DateTime.now,
        service = RecitationService(store, clock: clock),
        preferencesStore = preferencesStore ?? MemoryPreferencesStore(),
        reminderProvider = reminderProvider ?? UnavailableReminderProvider();
@@ -17,6 +20,10 @@ class AppModel extends ChangeNotifier {
   final RecitationService service;
   final DateTime Function() clock;
   final PreferencesStore preferencesStore;
+  final LocalSnapshotRepository? snapshots;
+  String? get snapshotError => store is HiveRecitationStore
+      ? (store as HiveRecitationStore).snapshotError
+      : null;
   final ReminderProvider reminderProvider;
   ReminderPreferences preferences = const ReminderPreferences();
   ReminderPermission reminderPermission = ReminderPermission.unavailable;
@@ -155,6 +162,10 @@ class AppModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  List<Task> get overdueReviews => dueTasks
+      .where((t) => t.kind == TaskKind.review && t.dueDate.isBefore(today))
+      .toList();
+
   List<Task> get dueTasks =>
       tasks
           .where(
@@ -216,7 +227,7 @@ class AppModel extends ChangeNotifier {
       return '${date.month}月${date.day}日${date.isBefore(task.dueDate) ? '提前完成' : '已完成'}';
     }
     if (task.scheduledDate != task.dueDate) {
-      return '已延期 · 原定${task.scheduledDate.month}月${task.scheduledDate.day}日';
+      return '${latestReschedule(task.id)?.adjustment == null ? '已延期' : '已调整'} · 原定${task.scheduledDate.month}月${task.scheduledDate.day}日';
     }
     return '待完成';
   }
@@ -232,7 +243,11 @@ class AppModel extends ChangeNotifier {
       .length;
 
   bool canUndoPostponement(LearningEvent event) {
-    if (event.previousDueDate == null || event.undoOf != null) return false;
+    if (event.previousDueDate == null ||
+        event.undoOf != null ||
+        event.adjustment != null) {
+      return false;
+    }
     final matches = tasks.where((t) => t.id == event.taskId);
     if (matches.isEmpty ||
         matches.first.status != TaskStatus.pending ||
@@ -267,6 +282,7 @@ class AppModel extends ChangeNotifier {
                   event.taskId == task.id &&
                   event.dueDate == task.dueDate &&
                   event.undoOf == null &&
+                  event.adjustment == null &&
                   latestReschedule(task.id)?.id == event.id &&
                   DateTime(local.year, local.month, local.day) == today;
             }) &&

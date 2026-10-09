@@ -186,6 +186,7 @@ class EntityCodec {
         if (e.previousDueDate != null)
           'previousDueDate': day(e.previousDueDate!),
         if (e.undoOf != null) 'undoOf': e.undoOf,
+        if (e.adjustment != null) 'adjustment': e.adjustment!.name,
       };
   static LearningEvent readEvent(JsonObject j) => LearningEvent(
         id: j['id'],
@@ -209,5 +210,8 @@ class EntityCodec {
         previousDueDate:
             j['previousDueDate'] == null ? null : readDay(j['previousDueDate']),
         undoOf: j['undoOf'] as String?,
+        adjustment: j['adjustment'] == null
+            ? null
+            : ScheduleAdjustment.values.byName(j['adjustment']),
       );
 }

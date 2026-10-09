@@ -90,6 +90,38 @@ class BackupService {
     return result;
   }
 
+  /// Exact rollback is explicit and distinct from the normal conflict-safe merge.
+  Map<String, dynamic> snapshotState(String text) {
+    final bundle = _read(text);
+    if (bundle.entities.keys.toSet().length !=
+            MemoryRecitationStore.tables.length ||
+        MemoryRecitationStore.tables
+            .any((t) => !bundle.entities.containsKey(t))) {
+      throw const FormatException('快照不完整，不能恢复');
+    }
+    final state = MemoryRecitationStore.emptyState();
+    for (final table in bundle.entities.entries) {
+      for (final row in table.value) {
+        (state[table.key] as Map)[row['id']] = row;
+      }
+    }
+    _validateReferences(state);
+    return state;
+  }
+
+  Future<void> restoreSnapshot(String text,
+      {required Map<String, dynamic> expected,
+      required Future<void> Function(String) saveCurrentArchive}) async {
+    final state = snapshotState(text);
+    await store.replaceSnapshot(state, expected: expected,
+        saveCurrent: (current) async {
+      final stable = MemoryRecitationStore(initial: current);
+      await saveCurrentArchive(
+          BackupService(stable, profileId: profileId, timeZone: timeZone)
+              .export());
+    });
+  }
+
   ArchiveBundle _read(String text) {
     final bundle = ArchiveBundle.decode(text);
     if (bundle.manifest.includesAudio ||
@@ -154,6 +186,23 @@ class BackupService {
     for (final a in (state['attempts'] as Map).values) {
       if (tasks[a['taskId']]?['segmentId'] != a['segmentId'])
         throw const FormatException('考核缺少对应任务');
+    }
+    final events = state['events'] as Map;
+    final attempts = state['attempts'] as Map;
+    for (final e in events.values) {
+      if (e['taskId'] != null && !tasks.containsKey(e['taskId']))
+        throw const FormatException('历史事件缺少对应任务');
+      if (e['segmentId'] != null && !segments.contains(e['segmentId']))
+        throw const FormatException('历史事件缺少对应段落');
+      if (e['attemptId'] != null && !attempts.containsKey(e['attemptId']))
+        throw const FormatException('历史事件缺少对应考核');
+      if (e['undoOf'] != null) {
+        final original = events[e['undoOf']];
+        if (original == null ||
+            original['type'] != 'taskRescheduled' ||
+            original['taskId'] != e['taskId'] ||
+            original['undoOf'] != null) throw const FormatException('撤销事件引用无效');
+      }
     }
   }
 }

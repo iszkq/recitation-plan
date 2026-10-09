@@ -15,6 +15,8 @@ import 'design.dart';
 import 'speech.dart';
 import 'plan_adjustments.dart';
 import 'reminder_settings.dart';
+import 'schedule_pages.dart';
+import 'snapshot_pages.dart';
 
 class RecitationApp extends StatelessWidget {
   const RecitationApp({super.key, required this.model});
@@ -181,6 +183,33 @@ class _TodayPageState extends State<TodayPage> {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   Text(dateLabel(model.today), style: Design.caption),
+                  if (model.overdueReviews.isNotEmpty)
+                    DetailRow(
+                      inset: false,
+                      title: '整理积压复习',
+                      subtitle: '${model.overdueReviews.length} 个逾期复习，可分散到不同日期',
+                      icon: CupertinoIcons.clock,
+                      onTap: () =>
+                          Navigator.of(context, rootNavigator: true).push(
+                            CupertinoPageRoute(
+                              builder: (_) => ScheduleReplanPage(model: model),
+                            ),
+                          ),
+                    ),
+                  DetailRow(
+                    inset: false,
+                    title: '计划月历',
+                    subtitle: '查看每天的新背、复习和完成情况',
+                    icon: CupertinoIcons.calendar,
+                    onTap: () =>
+                        Navigator.of(context, rootNavigator: true).push(
+                          CupertinoPageRoute(
+                            builder: (_) => ScheduleCalendarPage(model: model),
+                          ),
+                        ),
+                  ),
+                  if (model.snapshotError != null)
+                    Text(model.snapshotError!, style: Design.caption),
                   const SizedBox(height: 6),
                   Text(
                     tasks.isEmpty
@@ -1591,6 +1620,42 @@ class PlanDetailPage extends StatelessWidget {
                     style: Design.caption,
                   ),
                   PlanPauseControl(model: model, plan: current),
+                  DetailRow(
+                    inset: false,
+                    title: '计划月历',
+                    subtitle: '按日期查看本计划',
+                    icon: CupertinoIcons.calendar,
+                    onTap: () =>
+                        Navigator.of(context, rootNavigator: true).push(
+                          CupertinoPageRoute(
+                            builder: (_) => ScheduleCalendarPage(
+                              model: model,
+                              planId: current.id,
+                            ),
+                          ),
+                        ),
+                  ),
+                  if (!current.paused &&
+                      tasks.any(
+                        (t) =>
+                            t.kind == TaskKind.newLearning &&
+                            t.status == TaskStatus.pending,
+                      ))
+                    DetailRow(
+                      inset: false,
+                      title: '重新安排新背',
+                      subtitle: '修改每日配额和学习日，先预览再保存',
+                      icon: CupertinoIcons.calendar,
+                      onTap: () =>
+                          Navigator.of(context, rootNavigator: true).push(
+                            CupertinoPageRoute(
+                              builder: (_) => ScheduleReplanPage(
+                                model: model,
+                                planId: current.id,
+                              ),
+                            ),
+                          ),
+                    ),
                 ],
               ),
             ),
@@ -3231,6 +3296,18 @@ class _BackupPageState extends State<BackupPage> {
         padding: const EdgeInsets.all(Design.inset),
         children: [
           const Text('保存每一次积累', style: Design.heading),
+          DetailRow(
+            inset: false,
+            title: '本机快照',
+            subtitle: '自动留存与恢复到之前的时间点',
+            icon: CupertinoIcons.clock,
+            onTap: () => Navigator.push(
+              context,
+              CupertinoPageRoute(
+                builder: (_) => LocalSnapshotsPage(model: widget.model),
+              ),
+            ),
+          ),
           Text(
             widget.model.preferences.lastExportAt == null
                 ? '还没有成功导出记录'

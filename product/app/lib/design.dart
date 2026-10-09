@@ -13,6 +13,9 @@ abstract final class Design {
   static const error = Color(0xFFB42318);
   static const errorSoft = Color(0xFFFFF0EE);
   static const inset = 24.0;
+  static const smallGap = 8.0;
+  static const touchTarget = 44.0;
+  static const calendarCellHeight = 72.0;
   static const gap = 16.0;
   static const sectionGap = 24.0;
   static const reading = TextStyle(fontSize: 20, height: 1.8);

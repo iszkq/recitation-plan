@@ -47,3 +47,13 @@
 Flutter 的 PickerSheet 共用于日期与提醒时间，330pt 高度集中定义于 Design；PostponePage 复用 DetailRow、CardSection、PrimaryAction，显示工作量后确认。PostponementHistoryPage 显示前后日期和撤销状态，仅最近一次未完成任务可撤销。CompletionFeedback 仅在已保存的无辅助自动通过后显示完成和下次复习。ReminderSettingsPage 复用 CupertinoSwitch，每个开关有中文语义标签；默认关闭，申请失败不启用。页面和弹窗支持 320pt/1.5 倍字号回归。
 
 延期历史的 DetailRow 使用可变高度完整副说明，关键日期与撤销状态不受默认三行摘要限制；窄屏大字体按内容换行。
+
+## 0.2.4 扩展
+
+| 组件 | 结构与状态 | 交互/无障碍 |
+|---|---|---|
+| ScheduleCalendarPage | 月份导航、七列日期、单日任务列表 | 日期格最小44×72pt、320pt无横向溢出；暂停计划可查看但不可考核 |
+| ScheduleReplanPage | 开始日、配额、学习日、预览、确认保存 | 全部真实数据；预览失效后重新计算；工作量包含原有任务 |
+| LocalSnapshotsPage | 类别、时间、文章/考核数、手动保存与恢复 | 损坏条目禁用；恢复确认解释回滚范围；恢复前另存成功才替换 |
+
+复用现有 DetailRow、CardSection、PrimaryAction、PickerSheet，无新颜色。Design.smallGap=8、touchTarget=44、calendarCellHeight=72；tokens.css 同步对应度量。

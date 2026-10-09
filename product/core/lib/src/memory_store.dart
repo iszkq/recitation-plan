@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'archive.dart';
 import 'codec.dart';
 import 'events.dart';
 import 'models.dart';
@@ -26,6 +27,22 @@ class MemoryRecitationStore implements RecitationStore {
   }
 
   Map<String, dynamic> snapshot() => _clone(_state);
+  Future<void> replaceSnapshot(Map<String, dynamic> next,
+      {required Map<String, dynamic> expected,
+      required Future<void> Function(Map<String, dynamic>) saveCurrent}) {
+    final replacement = _clone(next);
+    final expectedText = canonicalJson(expected);
+    final operation = _tail.then((_) async {
+      if (canonicalJson(_state) != expectedText)
+        throw StateError('档案已变化，请重新预览后恢复');
+      await saveCurrent(_clone(_state));
+      await persist(replacement);
+      _state = _clone(replacement);
+    });
+    _tail = operation.then<void>((_) {}, onError: (Object e, StackTrace s) {});
+    return operation;
+  }
+
   @override
   Future<bool> writeBatch(RecitationBatch batch) {
     final operation = _tail.then((_) async {
@@ -48,6 +65,38 @@ class MemoryRecitationStore implements RecitationStore {
         if (plan == null || plan['deleted'] == true || plan['paused'] == true) {
           throw StateError('计划不存在或已暂停');
         }
+      }
+      if (batch.expectedActivePlanIds != null) {
+        final active = {
+          for (final raw in (next['plans'] as Map).values)
+            if (raw['paused'] != true && raw['deleted'] != true)
+              raw['id'] as String
+        };
+        if (active.length != batch.expectedActivePlanIds!.length ||
+            !active.containsAll(batch.expectedActivePlanIds!))
+          throw StateError('活跃计划已变化，请重新预览');
+      }
+      for (final entry in batch.expectedPlans.entries) {
+        final raw = (next['plans'] as Map)[entry.key];
+        if (raw == null ||
+            canonicalJson(EntityCodec.plan(
+                    EntityCodec.readPlan(Map<String, dynamic>.from(raw)))) !=
+                canonicalJson(EntityCodec.plan(entry.value))) {
+          throw StateError('计划已变化，请重新预览');
+        }
+      }
+      for (final entry in batch.expectedPlanTasks.entries) {
+        final current = <String, dynamic>{
+          for (final raw in (next['tasks'] as Map).values)
+            if (raw['planId'] == entry.key)
+              raw['id'] as String: EntityCodec.task(
+                  EntityCodec.readTask(Map<String, dynamic>.from(raw)))
+        };
+        final expected = {
+          for (final t in entry.value) t.id: EntityCodec.task(t)
+        };
+        if (canonicalJson(current) != canonicalJson(expected))
+          throw StateError('任务已变化，请重新预览');
       }
       void add(String table, JsonObject value, {bool immutable = false}) {
         final entries = next[table] as Map<String, dynamic>;

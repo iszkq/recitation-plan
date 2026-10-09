@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "updated_at": "2026-10-09",
   "system_origin": "greenfield",
   "product": {
@@ -20,7 +20,10 @@
       "间隔复习",
       "本机档案与可选账户备份",
       "周报、月报与年报",
-      "单项延期、选择日期与撤销；学习和备份提醒"
+      "单项延期、选择日期与撤销；学习和备份提醒",
+      "计划月历与剩余新背重新排期",
+      "积压复习分日安排",
+      "本机自动快照与确认恢复"
     ]
   },
   "sources": {
@@ -43,7 +46,11 @@
       "https://swiftandcurious.com/2025/12/01/memorizeme/"
     ],
     "screenshots": [
-      "output/native-ui/release-preview.png"
+      "output/native-ui/release-preview.png",
+      "output/native-ui/schedule-calendar-390.png",
+      "output/native-ui/schedule-replan-390.png",
+      "output/native-ui/review-backlog-390.png",
+      "output/native-ui/local-snapshots-390.png"
     ],
     "brand_docs": []
   },
@@ -104,7 +111,8 @@
         40
       ],
       "screenInset": 24,
-      "sectionGap": 24
+      "sectionGap": 24,
+      "calendarCellHeight": 72
     },
     "radius": {
       "input": 10,
@@ -199,6 +207,36 @@
       ],
       "permission": "用户开启时申请",
       "defaultEnabled": false
+    },
+    "ScheduleCalendar": {
+      "columns": 7,
+      "minTouchWidth": 44,
+      "minCellHeight": 72,
+      "gridInset": 0,
+      "contentInset": 24,
+      "semantics": "完整日期、任务数、已完成数和选中状态"
+    },
+    "SchedulePreview": {
+      "fields": [
+        "开始日期",
+        "每日配额",
+        "学习日",
+        "预计完成日期",
+        "目标日工作量",
+        "改期前后日期"
+      ],
+      "save": "明确预览后确认；失效预览须重新计算"
+    },
+    "LocalSnapshots": {
+      "states": [
+        "加载",
+        "空列表",
+        "有效快照",
+        "损坏不可恢复",
+        "恢复确认",
+        "保存失败"
+      ],
+      "restore": "明确回滚范围，恢复前完整档案保存成功才替换"
     }
   },
   "layout": {
@@ -211,7 +249,8 @@
       "平板展示两列设计画面",
       "桌面展示三列设计画面",
       "正文和按钮支持换行",
-      "底部按钮尊重安全区与键盘"
+      "底部按钮尊重安全区与键盘",
+      "月历七列铺满安全区宽度，320pt 下每格至少44pt，其他内容保留24pt边距"
     ]
   },
   "visual_language": {

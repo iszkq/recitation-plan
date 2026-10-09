@@ -20,3 +20,7 @@
 ## 自选日期与提醒
 
 0.2.3 延用系统 iOS 日期/时间滚轮、取消/确定底部面板和开关，不新增装饰色。Flutter 测试引擎截图：output/native-ui/postpone-custom-390.png、postpone-history-390.png、reminder-settings-390.png；320pt 截图检验大字体，不代表 iPhone 真机。
+
+## 月历、排期与快照
+
+0.2.4 使用系统 iOS 月份导航、日期选择器和确认弹窗。新增七列月历是产品必要信息结构，保持纯白列表与克制蓝色，不引入装饰图表。output/native-ui/schedule-calendar-390.png、schedule-replan-390.png、review-backlog-390.png、local-snapshots-390.png 为 Flutter 测试渲染，320pt 对应截图使用1.5倍字体；不是 iPhone 真机。

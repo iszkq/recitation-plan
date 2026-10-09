@@ -12,3 +12,6 @@
 
 /* 0.2.3: 日期与提醒时间共用系统底部选择器；Flutter Design 映射。 */
 :root { --picker-sheet-height: 330px; }
+
+/* 0.2.4: 七列月历铺满宽度，单格触控与 Flutter Design 对齐。 */
+:root { --calendar-cell-height: 72px; --small-gap: 8px; }

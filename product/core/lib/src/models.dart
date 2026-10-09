@@ -96,6 +96,26 @@ class Plan {
   final String timeZone;
   final bool paused;
   final bool deleted;
+
+  Plan copyWith(
+          {String? name,
+          int? dailyNewQuota,
+          Set<int>? weekdays,
+          AssessmentRule? rule,
+          bool? paused}) =>
+      Plan(
+        id: id,
+        name: name ?? this.name,
+        segmentIds: segmentIds,
+        startDate: startDate,
+        endDate: endDate,
+        dailyNewQuota: dailyNewQuota ?? this.dailyNewQuota,
+        weekdays: weekdays ?? this.weekdays,
+        rule: rule ?? this.rule,
+        timeZone: timeZone,
+        paused: paused ?? this.paused,
+        deleted: deleted,
+      );
 }
 
 @immutable

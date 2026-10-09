@@ -200,7 +200,8 @@ class _PostponementHistoryPageState extends State<PostponementHistoryPage> {
               .where(
                 (e) =>
                     e.type == LearningEventType.taskRescheduled &&
-                    e.undoOf == null,
+                    e.undoOf == null &&
+                    e.adjustment == null,
               )
               .toList()
             ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));

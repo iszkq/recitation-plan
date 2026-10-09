@@ -12,3 +12,5 @@ export 'src/memory_store.dart';
 export 'src/hive_store.dart';
 export 'src/recitation_service.dart';
 export 'src/backup_service.dart';
+export 'src/schedule_management.dart';
+export 'src/local_snapshots.dart';

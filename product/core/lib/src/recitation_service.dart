@@ -9,6 +9,7 @@ import 'ports.dart';
 import 'review_scheduler.dart';
 import 'scheduler.dart';
 import 'normalization.dart';
+import 'schedule_management.dart';
 
 bool _zonesInitialized = false;
 DateTime eventLocalTime(LearningEvent event) =>
@@ -241,7 +242,8 @@ class RecitationService {
         original.type != LearningEventType.taskRescheduled ||
         original.previousDueDate == null ||
         original.taskId == null ||
-        original.undoOf != null) {
+        original.undoOf != null ||
+        original.adjustment != null) {
       throw StateError('这条延期记录不能撤销');
     }
     LearningEvent? latest;
@@ -281,6 +283,80 @@ class RecitationService {
     }, expectedRescheduleIds: {
       task.id: original.id
     }, reschedulesPendingTasks: true));
+  }
+
+  Future<ScheduleChangePreview> previewRemainingSchedule(
+      {required String planId,
+      required DateTime start,
+      required int quota,
+      required Set<int> weekdays}) async {
+    final plan = await store.getPlan(planId);
+    if (plan == null) throw StateError('计划不存在');
+    final today = localTime(_clock(), plan.timeZone);
+    return planRemainingSchedule(
+            plan: plan,
+            tasks: await store.tasks(),
+            today: today,
+            start: start,
+            quota: quota,
+            weekdays: weekdays)
+        .withEvents(await store.events());
+  }
+
+  Future<ScheduleChangePreview> previewReviewBacklog(
+      {required DateTime start,
+      required int quota,
+      required Set<int> weekdays}) async {
+    final plans = await store.plans();
+    if (plans.any((p) => !p.paused && p.timeZone != 'Asia/Shanghai'))
+      throw StateError('请分别处理不同时区的计划');
+    return planReviewBacklog(
+            plans: plans,
+            tasks: await store.tasks(),
+            today: localTime(_clock(), 'Asia/Shanghai'),
+            start: start,
+            quota: quota,
+            weekdays: weekdays)
+        .withEvents(await store.events());
+  }
+
+  Future<int> applySchedulePreview(ScheduleChangePreview preview) async {
+    if (!preview.fits) throw StateError('当前配额和学习日无法在原截止日前完成，请重新预览');
+    final now = _clock().toUtc();
+    for (final p in preview.plans.values) {
+      if (scheduleDay(localTime(now, p.timeZone)) != preview.day)
+        throw StateError('日期已变化，请重新预览');
+    }
+    await store.writeBatch(RecitationBatch(
+      plans: preview.updatedPlan == null ? [] : [preview.updatedPlan!],
+      tasks: preview.changes.map((c) => c.after).toList(),
+      events: preview.changes
+          .map((c) => LearningEvent(
+              id: _id(),
+              type: LearningEventType.taskRescheduled,
+              occurredAt: now,
+              timeZone: preview.plans[c.before.planId]!.timeZone,
+              durationSeconds: 0,
+              taskId: c.before.id,
+              segmentId: c.before.segmentId,
+              taskKind: c.before.kind,
+              previousDueDate: c.before.dueDate,
+              dueDate: c.date,
+              adjustment: preview.adjustment))
+          .toList(),
+      expectedTaskDueDates: {
+        for (final c in preview.changes) c.before.id: c.before.dueDate
+      },
+      expectedPlans: preview.plans,
+      expectedPlanTasks: preview.tasks,
+      expectedActivePlanIds:
+          preview.adjustment == ScheduleAdjustment.reviewBacklog
+              ? preview.plans.keys.toSet()
+              : null,
+      expectedRescheduleIds: preview.latestEvents,
+      reschedulesPendingTasks: true,
+    ));
+    return preview.changes.length;
   }
 
   Future<Article> updateArticle({
@@ -446,6 +522,7 @@ class RecitationService {
         tasks: tasks,
         events: events,
         expectedTaskDueDates: {task.id: task.dueDate},
+        expectedPlans: {plan.id: plan},
         finalizesAttemptId: attemptId));
     return (await store.getAttempt(attemptId))!;
   }

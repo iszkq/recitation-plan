@@ -12,6 +12,9 @@ class RecitationBatch {
       this.finalizesAttemptId,
       this.expectedTaskDueDates = const {},
       this.expectedRescheduleIds = const {},
+      this.expectedPlans = const {},
+      this.expectedPlanTasks = const {},
+      this.expectedActivePlanIds,
       this.reschedulesPendingTasks = false});
   final List<Article> articles;
   final List<ArticleVersion> versions;
@@ -27,6 +30,9 @@ class RecitationBatch {
   final Map<String, DateTime> expectedTaskDueDates;
   final Map<String, String?> expectedRescheduleIds;
   final bool reschedulesPendingTasks;
+  final Map<String, Plan> expectedPlans;
+  final Map<String, List<Task>> expectedPlanTasks;
+  final Set<String>? expectedActivePlanIds;
 }
 
 /// 领域层不依赖 Hive、SQLite 或云服务，方便本机存储和测试替换。
