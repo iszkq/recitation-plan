@@ -57,3 +57,7 @@ Flutter 的 PickerSheet 共用于日期与提醒时间，330pt 高度集中定�
 | LocalSnapshotsPage | 类别、时间、文章/考核数、手动保存与恢复 | 损坏条目禁用；恢复确认解释回滚范围；恢复前另存成功才替换 |
 
 复用现有 DetailRow、CardSection、PrimaryAction、PickerSheet，无新颜色。Design.smallGap=8、touchTarget=44、calendarCellHeight=72；tokens.css 同步对应度量。
+
+## 0.2.5 校对与成长
+
+TextComparison共用于文字和语音结果，SelectableText富文本保留标点、换行和复制；语音同音容错可在录音前切换，结果按该次记录的模式展示，原始文本默认收起。差异列表与高亮来自同一次对齐。GrowthPage使用真实学习事件、120pt小芽图形、周目标1至7天控件及已获得/待解锁徽章列表，动态大字体纵向滚动。开源许可由系统许可页显示。

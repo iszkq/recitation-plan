@@ -75,14 +75,20 @@ class AppModel extends ChangeNotifier {
     int? hour,
     int? minute,
     bool exported = false,
+    int? weeklyGoalDays,
   }) {
     final operation = _settingsTail.then((_) async {
       await initializePreferences();
+      if (weeklyGoalDays != null &&
+          (weeklyGoalDays < 1 || weeklyGoalDays > 7)) {
+        throw const FormatException('每周目标应为1至7天');
+      }
       final next = preferences.copyWith(
         studyEnabled: studyEnabled,
         backupEnabled: backupEnabled,
         hour: hour,
         minute: minute,
+        weeklyGoalDays: weeklyGoalDays,
         lastExportAt: exported ? clock().toUtc() : null,
         firstOpenedAt: preferences.firstOpenedAt ?? clock().toUtc(),
       );
@@ -320,6 +326,11 @@ class AppModel extends ChangeNotifier {
     anchor: anchor,
     asOf: today,
     events: events,
+    localDate: eventLocalTime,
+  );
+  LearningGrowth get growth => buildLearningGrowth(
+    events: events,
+    today: today,
     localDate: eventLocalTime,
   );
 }

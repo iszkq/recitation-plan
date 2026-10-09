@@ -24,3 +24,5 @@
 ## 月历、排期与快照
 
 0.2.4 使用系统 iOS 月份导航、日期选择器和确认弹窗。新增七列月历是产品必要信息结构，保持纯白列表与克制蓝色，不引入装饰图表。output/native-ui/schedule-calendar-390.png、schedule-replan-390.png、review-backlog-390.png、local-snapshots-390.png 为 Flutter 测试渲染，320pt 对应截图使用1.5倍字体；不是 iPhone 真机。
+
+0.2.5逐字对比借鉴内容校对中错读/漏读/多读分开展示；Remember Me的连续目标与多方式练习作为成长参考。来源与取舍见 docs/语音校对方案与成长验收.md。小芽为绘制的产品状态图形，截图 voice-comparison-390.png、learning-garden-390.png 来自Flutter引擎，非真机。

@@ -17,6 +17,9 @@ import 'plan_adjustments.dart';
 import 'reminder_settings.dart';
 import 'schedule_pages.dart';
 import 'snapshot_pages.dart';
+import 'text_comparison.dart';
+import 'growth_page.dart';
+import 'open_source_page.dart';
 
 class RecitationApp extends StatelessWidget {
   const RecitationApp({super.key, required this.model});
@@ -2258,6 +2261,7 @@ class _SpeechAssessmentPageState extends State<SpeechAssessmentPage> {
   Timer? ticker;
   SpeechState state = SpeechState.idle;
   String transcript = '';
+  bool acceptHomophones = true;
   String? error;
   bool busy = false;
   bool leaving = false;
@@ -2402,6 +2406,8 @@ class _SpeechAssessmentPageState extends State<SpeechAssessmentPage> {
         attemptId: attemptId,
         transcript: text,
         isFinal: true,
+        input: AssessmentInput.speech,
+        acceptHomophones: acceptHomophones,
         allowEarly: widget.allowEarly,
         activeSeconds: active.elapsed.inSeconds,
       );
@@ -2497,6 +2503,26 @@ class _SpeechAssessmentPageState extends State<SpeechAssessmentPage> {
                 recording ? '请自然背诵，结束后与原文校对。' : '原文和实时转录已隐藏，准备好后开始录音。',
                 style: Design.caption,
               ),
+              const Text(
+                '同音同调字会按原文校正，近音与多音字保留核对；漏背和多背仍会标出。',
+                style: Design.caption,
+              ),
+              if (result == null)
+                Row(
+                  children: [
+                    const Expanded(child: Text('同音字容错')),
+                    Semantics(
+                      label: '同音字容错',
+                      child: CupertinoSwitch(
+                        value: acceptHomophones,
+                        onChanged: recording || finalizing
+                            ? null
+                            : (value) =>
+                                  setState(() => acceptHomophones = value),
+                      ),
+                    ),
+                  ],
+                ),
               const SizedBox(height: 22),
               CardSection(
                 child: Column(
@@ -2570,7 +2596,7 @@ class _SpeechAssessmentPageState extends State<SpeechAssessmentPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '漏字 ${score.deleted} · 错字 ${score.substituted} · 多说 ${score.inserted}',
+                        '漏字 ${score.deleted} · 错字 ${score.substituted} · 多字 ${score.inserted}',
                         style: Design.caption,
                       ),
                     ],
@@ -2582,12 +2608,12 @@ class _SpeechAssessmentPageState extends State<SpeechAssessmentPage> {
                   task: widget.task,
                   attempt: result!,
                 ),
-                Text(
-                  '原文：${widget.model.segments[widget.task.segmentId]?.text ?? ''}',
-                  style: Design.reading,
+                TextComparison(
+                  key: ValueKey(result!.id),
+                  original:
+                      widget.model.segments[widget.task.segmentId]?.text ?? '',
+                  attempt: result!,
                 ),
-                const SizedBox(height: 16),
-                Text('你的背诵：$transcript', style: Design.reading),
               ],
               if (result == null && !recording && !finalizing)
                 PrimaryAction('开始录音', onPressed: start),
@@ -2752,7 +2778,7 @@ class _TextAssessmentPageState extends State<TextAssessmentPage>
                       style: Design.caption,
                     ),
                     Text(
-                      '漏字 ${score.deleted} · 错字 ${score.substituted} · 多说 ${score.inserted}',
+                      '漏字 ${score.deleted} · 错字 ${score.substituted} · 多字 ${score.inserted}',
                       style: Design.caption,
                     ),
                   ],
@@ -2764,9 +2790,11 @@ class _TextAssessmentPageState extends State<TextAssessmentPage>
                 task: widget.task,
                 attempt: result!,
               ),
-              Text('原文：${segment?.text ?? ''}', style: Design.reading),
-              const SizedBox(height: 16),
-              Text('你的背诵：${result!.transcript ?? ''}', style: Design.reading),
+              TextComparison(
+                key: ValueKey(result!.id),
+                original: segment?.text ?? '',
+                attempt: result!,
+              ),
             ],
           ],
         ),
@@ -2788,6 +2816,17 @@ class ProfilePage extends StatelessWidget {
           padding: const EdgeInsets.all(Design.inset),
           children: [
             const Text('我的学习', style: Design.display),
+            DetailRow(
+              inset: false,
+              title: '学习花园',
+              subtitle:
+                  '记忆小芽 · 连续学习 ${model.growth.currentStreak} 天 · 本周 ${model.growth.weekDays}/${model.preferences.weeklyGoalDays} 天',
+              subtitleMaxLines: null,
+              icon: CupertinoIcons.leaf_arrow_circlepath,
+              onTap: () => Navigator.of(context, rootNavigator: true).push(
+                CupertinoPageRoute(builder: (_) => GrowthPage(model: model)),
+              ),
+            ),
             const SizedBox(height: 16),
             CardSection(
               child: Row(
@@ -2892,6 +2931,12 @@ class ProfilePage extends StatelessWidget {
                   builder: (_) => ReminderSettingsPage(model: model),
                 ),
               ),
+            ),
+            CupertinoButton(
+              onPressed: () => Navigator.of(context, rootNavigator: true).push(
+                CupertinoPageRoute(builder: (_) => const OpenSourcePage()),
+              ),
+              child: const Text('开源许可'),
             ),
           ],
         ),

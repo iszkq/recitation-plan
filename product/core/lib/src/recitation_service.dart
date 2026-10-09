@@ -424,6 +424,8 @@ class RecitationService {
       bool hasUnresolvedDoubt = false,
       bool technicalFailure = false,
       bool allowEarly = false,
+      AssessmentInput input = AssessmentInput.text,
+      bool acceptHomophones = false,
       int activeSeconds = 0}) async {
     if (!isFinal) throw StateError('临时识别结果不能提交考核');
     if (attemptId.trim().isEmpty || activeSeconds < 0)
@@ -470,7 +472,9 @@ class RecitationService {
         rule: plan.rule,
         wasAssisted: assisted,
         hasUnresolvedDoubt: hasUnresolvedDoubt,
-        technicalFailure: technicalFailure);
+        technicalFailure: technicalFailure,
+        allowVoiceHomophones:
+            input == AssessmentInput.speech && acceptHomophones);
     final now = _clock().toUtc();
     final attempt = Attempt(
         id: attemptId,
@@ -480,6 +484,8 @@ class RecitationService {
         status: decision.status,
         createdAt: now,
         transcript: transcript,
+        input: input,
+        acceptHomophones: input == AssessmentInput.speech && acceptHomophones,
         score: decision.score,
         rule: plan.rule);
     final events = <LearningEvent>[

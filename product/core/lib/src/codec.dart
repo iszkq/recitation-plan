@@ -155,6 +155,8 @@ class EntityCodec {
         'score': a.score == null ? null : score(a.score!),
         'audioPath': a.audioPath,
         'rule': rule(a.rule),
+        'input': a.input.name,
+        'acceptHomophones': a.acceptHomophones,
       };
   static Attempt readAttempt(JsonObject j) => Attempt(
         id: j['id'],
@@ -169,6 +171,10 @@ class EntityCodec {
             : readScore(Map<String, dynamic>.from(j['score'])),
         audioPath: j['audioPath'],
         rule: readRule(Map<String, dynamic>.from(j['rule'])),
+        input: j['input'] == null
+            ? AssessmentInput.text
+            : AssessmentInput.values.byName(j['input']),
+        acceptHomophones: j['acceptHomophones'] as bool? ?? false,
       );
   static JsonObject event(LearningEvent e) => {
         'id': e.id,

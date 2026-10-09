@@ -1,7 +1,7 @@
 name: recitation_app
 description: 本机优先的文章背诵与学习计划
 publish_to: none
-version: 0.2.4+6
+version: 0.2.5+7
 environment:
   sdk: '>=3.13.0 <4.0.0'
 dependencies:
@@ -21,3 +21,5 @@ dev_dependencies:
   flutter_lints: ^6.0.0
 flutter:
   uses-material-design: false
+  assets:
+    - assets/licenses/lpinyin.txt

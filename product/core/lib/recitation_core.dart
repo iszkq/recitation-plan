@@ -14,3 +14,4 @@ export 'src/recitation_service.dart';
 export 'src/backup_service.dart';
 export 'src/schedule_management.dart';
 export 'src/local_snapshots.dart';
+export 'src/learning_growth.dart';

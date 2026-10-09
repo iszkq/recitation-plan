@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "updated_at": "2026-10-09",
   "system_origin": "greenfield",
   "product": {
@@ -23,7 +23,9 @@
       "单项延期、选择日期与撤销；学习和备份提醒",
       "计划月历与剩余新背重新排期",
       "积压复习分日安排",
-      "本机自动快照与确认恢复"
+      "本机自动快照与确认恢复",
+      "默写逐字差异与语音同音校正",
+      "学习花园、连续学习、周目标与徽章"
     ]
   },
   "sources": {
@@ -50,7 +52,9 @@
       "output/native-ui/schedule-calendar-390.png",
       "output/native-ui/schedule-replan-390.png",
       "output/native-ui/review-backlog-390.png",
-      "output/native-ui/local-snapshots-390.png"
+      "output/native-ui/local-snapshots-390.png",
+      "output/native-ui/voice-comparison-390.png",
+      "output/native-ui/learning-garden-390.png"
     ],
     "brand_docs": []
   },
@@ -226,6 +230,19 @@
         "改期前后日期"
       ],
       "save": "明确预览后确认；失效预览须重新计算"
+    },
+    "TextComparison": {
+      "wideWidth": 600,
+      "layout": "窄屏上下、宽屏并排，全文换行",
+      "states": ["匹配", "错字", "漏字", "多字", "同音校正"],
+      "rawTranscript": "仅语音可展开，默认收起；数据保留原始结果"
+    },
+    "LearningGarden": {
+      "illustrationSize": 120,
+      "stages": [0, 1, 3, 7, 14, 30],
+      "weeklyGoalDays": [1, 7],
+      "defaultGoal": 3,
+      "source": "真实学习事件，掌握徽章只认自动通过"
     },
     "LocalSnapshots": {
       "states": [

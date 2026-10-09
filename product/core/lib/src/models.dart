@@ -185,6 +185,8 @@ class Score {
   final int unresolved;
 }
 
+enum AssessmentInput { text, speech }
+
 @immutable
 class Attempt {
   const Attempt({
@@ -198,6 +200,8 @@ class Attempt {
     this.score,
     this.audioPath,
     this.rule = const AssessmentRule(),
+    this.input = AssessmentInput.text,
+    this.acceptHomophones = false,
   });
 
   final String id;
@@ -210,4 +214,6 @@ class Attempt {
   final Score? score;
   final String? audioPath;
   final AssessmentRule rule;
+  final AssessmentInput input;
+  final bool acceptHomophones;
 }

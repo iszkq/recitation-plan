@@ -15,3 +15,4 @@
 
 /* 0.2.4: 七列月历铺满宽度，单格触控与 Flutter Design 对齐。 */
 :root { --calendar-cell-height: 72px; --small-gap: 8px; }
+:root { --comparison-wide-width: 600px; --growth-illustration-size: 120px; }

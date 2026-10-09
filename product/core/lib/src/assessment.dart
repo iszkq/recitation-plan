@@ -30,6 +30,7 @@ AssessmentDecision assessTranscript({
   required bool wasAssisted,
   required bool hasUnresolvedDoubt,
   bool technicalFailure = false,
+  bool allowVoiceHomophones = false,
 }) {
   if (rule.accuracyThreshold < 0 ||
       rule.accuracyThreshold > 100 ||
@@ -40,10 +41,10 @@ AssessmentDecision assessTranscript({
   if (normalizeForAssessment(segment.text).isEmpty)
     throw ArgumentError('原文不能为空');
   final source = wasAssisted ? AttemptSource.assisted : AttemptSource.automatic;
-  final score = _toScore(
-      alignText(segment.text, transcript,
-          ignorePunctuation: rule.ignorePunctuation),
-      hasUnresolvedDoubt ? 1 : 0);
+  final alignment = alignText(segment.text, transcript,
+      ignorePunctuation: rule.ignorePunctuation,
+      allowHomophones: allowVoiceHomophones);
+  final score = _toScore(alignment, hasUnresolvedDoubt ? 1 : 0);
   if (technicalFailure) {
     return AssessmentDecision(
         status: AttemptStatus.technicalFailure,
@@ -66,7 +67,10 @@ AssessmentDecision assessTranscript({
         reason: '存在未确认的识别疑点');
   }
   if (rule.requireKeywords &&
-      segment.keywords.any((word) => !normalizeForAssessment(transcript)
+      segment.keywords.any((word) => !normalizeForAssessment(
+              allowVoiceHomophones
+                  ? correctedSpeechText(transcript, alignment.edits)
+                  : transcript)
           .contains(normalizeForAssessment(word)))) {
     return AssessmentDecision(
         status: AttemptStatus.failed,

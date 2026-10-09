@@ -16,6 +16,8 @@ abstract final class Design {
   static const smallGap = 8.0;
   static const touchTarget = 44.0;
   static const calendarCellHeight = 72.0;
+  static const comparisonWideWidth = 600.0;
+  static const growthIllustrationSize = 120.0;
   static const gap = 16.0;
   static const sectionGap = 24.0;
   static const reading = TextStyle(fontSize: 20, height: 1.8);

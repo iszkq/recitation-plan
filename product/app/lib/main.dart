@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:recitation_core/recitation_core.dart';
 
@@ -11,6 +13,11 @@ import 'reminders.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks([
+      'lpinyin',
+    ], await rootBundle.loadString('assets/licenses/lpinyin.txt'));
+  });
   try {
     final root = await getApplicationDocumentsDirectory();
     final store = await HiveRecitationStore.open('${root.path}/recitation');

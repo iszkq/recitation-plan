@@ -52,12 +52,16 @@
 [下载新版未签名 IPA 产物](https://github.com/iszkq/recitation-plan/actions/runs/37762456398/artifacts/11542838665)，版本 0.2.0+2，SHA-256 为 a1fecd28a431e64c4ba259b2e2e4111d9cc14f303d63a0bd3126115a481c5a05。
 本次之后若仅更新截图、文档和验收记录，不重复构建 IPA；应用代码变化时再构建。
 
-## 当前版本 0.2.3+5
+## 历史版本 0.2.3+5
 
 支持单项/批量自选日期延期、撤销与工作量确认，自动通过后的提前完成及下次复习提示，iPhone 本地学习/每周备份提醒。提醒默认关闭，从“我的→提醒设置”开启；只在开启时申请系统权限。
 
 真实设备覆盖升级、通知和分享见 [真机验收步骤](真机覆盖升级验收.md)，自动验证与发布记录见 [延期撤销与提醒验收](延期撤销与提醒验收.md)。[下载0.2.3+5未签名IPA](https://github.com/iszkq/recitation-plan/actions/runs/37894173505/artifacts/11599442782)。[Actions 37894173505](https://github.com/iszkq/recitation-plan/actions/runs/37894173505) 的60项核心测试、27项Flutter测试和macOS iOS Release编译通过。SHA-256：`b3ed44ec3e310a19af339b06c581890a4fc9cff4c1e31741cfd16a923aa3d232`。
 
-## 0.2.4+6 构建中
+## 0.2.4+6 已验证
 
-新增计划月历、剩余新背重新排期、积压复习分日处理和本机快照恢复。沿用 Bundle ID `cn.recitation.recitationApp`，iOS 15+，保持原安装身份覆盖升级。发布完成后在 [计划月历与本机快照验收](计划月历与本机快照验收.md) 记录本次提交对应的 Actions、产物及校验值。
+新增计划月历、剩余新背重新排期、积压复习分日处理和本机快照恢复。沿用 Bundle ID `cn.recitation.recitationApp`，iOS 15+，保持原安装身份覆盖升级。[Actions 37899285227](https://github.com/iszkq/recitation-plan/actions/runs/37899285227)通过73项核心、33项Flutter及iOS Release。[未签名IPA](https://github.com/iszkq/recitation-plan/actions/runs/37899285227/artifacts/11601479488)，SHA-256：`77be010ea312270fa7166a01de82da545bc340dc2cf1f2e5a2d47bf6f985a4a9`。
+
+## 0.2.5+7 构建中
+
+新增文字/语音逐字高亮校对、语音同音容错及校正内容展示、连续学习与学习花园。成熟方案取舍、测试及最终构建记录见 [语音校对方案与成长验收](语音校对方案与成长验收.md)。仍保留原Bundle ID与签名升级要求，未签名包需签名后安装。

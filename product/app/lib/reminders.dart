@@ -12,6 +12,7 @@ class ReminderPreferences {
     this.minute = 0,
     this.firstOpenedAt,
     this.lastExportAt,
+    this.weeklyGoalDays = 3,
   });
   final bool studyEnabled;
   final bool backupEnabled;
@@ -19,6 +20,7 @@ class ReminderPreferences {
   final int minute;
   final DateTime? firstOpenedAt;
   final DateTime? lastExportAt;
+  final int weeklyGoalDays;
   ReminderPreferences copyWith({
     bool? studyEnabled,
     bool? backupEnabled,
@@ -26,6 +28,7 @@ class ReminderPreferences {
     int? minute,
     DateTime? firstOpenedAt,
     DateTime? lastExportAt,
+    int? weeklyGoalDays,
   }) => ReminderPreferences(
     studyEnabled: studyEnabled ?? this.studyEnabled,
     backupEnabled: backupEnabled ?? this.backupEnabled,
@@ -33,6 +36,7 @@ class ReminderPreferences {
     minute: minute ?? this.minute,
     firstOpenedAt: firstOpenedAt ?? this.firstOpenedAt,
     lastExportAt: lastExportAt ?? this.lastExportAt,
+    weeklyGoalDays: weeklyGoalDays ?? this.weeklyGoalDays,
   );
   Map<String, Object?> toJson() => {
     'studyEnabled': studyEnabled,
@@ -41,10 +45,13 @@ class ReminderPreferences {
     'minute': minute,
     'firstOpenedAt': firstOpenedAt?.toUtc().toIso8601String(),
     'lastExportAt': lastExportAt?.toUtc().toIso8601String(),
+    'weeklyGoalDays': weeklyGoalDays,
   };
   factory ReminderPreferences.fromJson(Map<String, dynamic> json) {
     final hour = json['hour'] as int? ?? 20;
     final minute = json['minute'] as int? ?? 0;
+    final goal = json['weeklyGoalDays'] as int? ?? 3;
+    if (goal < 1 || goal > 7) throw const FormatException('每周目标应为1至7天');
     if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
       throw const FormatException('提醒时间无效');
     }
@@ -53,6 +60,7 @@ class ReminderPreferences {
       backupEnabled: json['backupEnabled'] as bool? ?? false,
       hour: hour,
       minute: minute,
+      weeklyGoalDays: goal,
       firstOpenedAt: json['firstOpenedAt'] == null
           ? null
           : DateTime.parse(json['firstOpenedAt']),
